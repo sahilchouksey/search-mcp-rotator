@@ -6,7 +6,7 @@ import { ExhaustionDetector } from './detector.js'
 import { AuthInjector } from './auth-injector.js'
 import { MCPProxy } from './proxy.js'
 import { logger, setLogLevel, setProvider } from './logger.js'
-import { runSetup } from './setup.js'
+import { runSetup, DEFAULT_CONFIG_PATH } from './setup.js'
 
 function parseArgs(argv: string[]): { provider?: string; config?: string; setup?: boolean } {
   const args: { provider?: string; config?: string; setup?: boolean } = {}
@@ -44,7 +44,7 @@ async function main(): Promise<void> {
       throw new Error('--provider argument required. Usage: search-mcp-rotator --provider=<name>')
     }
     
-    const configPath = args.config || process.env.MCP_ROTATOR_CONFIG || './config.json'
+    const configPath = args.config || process.env.MCP_ROTATOR_CONFIG || DEFAULT_CONFIG_PATH
     const config = await loadConfig(configPath)
     
     // Set up logging
