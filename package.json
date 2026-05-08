@@ -1,10 +1,10 @@
 {
   "name": "search-mcp-rotator",
-  "version": "1.0.5",
+  "version": "1.0.7",
   "description": "Transparent API key rotation proxy for MCP search providers — Exa, Firecrawl, Tavily, Linkup, Bright Data, Olostep, Dappier, Parallel",
   "type": "module",
   "bin": {
-    "search-mcp-rotator": "./dist/index.js"
+    "search-mcp-rotator": "dist/index.js"
   },
   "files": [
     "dist/",
@@ -41,7 +41,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/sahilchouksey/search-mcp-rotator.git"
+    "url": "git+https://github.com/sahilchouksey/search-mcp-rotator.git"
   },
   "homepage": "https://github.com/sahilchouksey/search-mcp-rotator#readme",
   "dependencies": {
