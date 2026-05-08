@@ -1,23 +1,60 @@
 {
   "name": "search-mcp-rotator",
-  "version": "1.0.4",
-  "description": "Local MCP proxy with automatic API key rotation",
+  "version": "1.0.5",
+  "description": "Transparent API key rotation proxy for MCP search providers — Exa, Firecrawl, Tavily, Linkup, Bright Data, Olostep, Dappier, Parallel",
   "type": "module",
   "bin": {
     "search-mcp-rotator": "./dist/index.js"
   },
+  "files": [
+    "dist/",
+    "config.example.json",
+    "README.md",
+    "poster.png"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
   },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "api-key-rotation",
+    "search",
+    "proxy",
+    "exa",
+    "firecrawl",
+    "tavily",
+    "linkup",
+    "brightdata",
+    "olostep",
+    "dappier",
+    "parallel",
+    "rate-limit",
+    "opencode"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sahilchouksey/search-mcp-rotator.git"
+  },
+  "homepage": "https://github.com/sahilchouksey/search-mcp-rotator#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.11.0",
+    "ink": "^7.0.2",
+    "ink-text-input": "^6.0.0",
+    "react": "^19.2.6",
     "zod": "^3.23.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "typescript": "^5.5.0",
-    "tsx": "^4.19.0"
+    "@types/react": "^19.2.14",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
   }
 }
