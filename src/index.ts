@@ -6,13 +6,16 @@ import { ExhaustionDetector } from './detector.js'
 import { AuthInjector } from './auth-injector.js'
 import { MCPProxy } from './proxy.js'
 import { logger, setLogLevel, setProvider } from './logger.js'
+import { runSetup } from './setup.js'
 
-function parseArgs(argv: string[]): { provider?: string; config?: string } {
-  const args: { provider?: string; config?: string } = {}
+function parseArgs(argv: string[]): { provider?: string; config?: string; setup?: boolean } {
+  const args: { provider?: string; config?: string; setup?: boolean } = {}
   
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i]
-    if (arg.startsWith('--provider=')) {
+    if (arg === '--setup') {
+      args.setup = true
+    } else if (arg.startsWith('--provider=')) {
       args.provider = arg.split('=')[1]
     } else if (arg.startsWith('--config=')) {
       args.config = arg.split('=')[1]
@@ -29,6 +32,12 @@ function parseArgs(argv: string[]): { provider?: string; config?: string } {
 async function main(): Promise<void> {
   try {
     const args = parseArgs(process.argv)
+
+    if (args.setup) {
+      await runSetup(args.config)
+      return
+    }
+
     const providerName = args.provider
     
     if (!providerName) {
