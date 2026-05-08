@@ -1,6 +1,8 @@
 # Search MCP Rotator
 
-![Search MCP Rotator](./poster.png)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/sahilchouksey/search-mcp-rotator/main/poster.png" alt="Search MCP Rotator" width="100%" />
+</p>
 
 A local MCP (Model Context Protocol) proxy server that provides transparent API key rotation for search providers. When one key is exhausted, rate-limited, or returns any server-side error, the proxy automatically rotates to the next available key and retries the request — transparently, without the MCP client knowing a rotation occurred.
 
