@@ -1,0 +1,23 @@
+{
+  "name": "search-mcp-rotator",
+  "version": "1.0.0",
+  "description": "Local MCP proxy with automatic API key rotation",
+  "type": "module",
+  "bin": {
+    "search-mcp-rotator": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.11.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0",
+    "tsx": "^4.19.0"
+  }
+}

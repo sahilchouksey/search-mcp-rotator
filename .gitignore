@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.log
+.env
+config.json
+*.tsbuildinfo
+.DS_Store
+temp/
+.serena/

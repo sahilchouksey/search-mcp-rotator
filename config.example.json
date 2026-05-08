@@ -1,0 +1,97 @@
+{
+  "logLevel": "info",
+  "providers": {
+    "exa": {
+      "enabled": true,
+      "url": "https://mcp.exa.ai/mcp",
+      "authPattern": "bearer",
+      "keys": [
+        "exa_key_1",
+        "exa_key_2"
+      ],
+      "strategy": "round-robin",
+      "cooldownMs": 60000
+    },
+    "firecrawl": {
+      "enabled": true,
+      "url": "https://mcp.firecrawl.dev/mcp",
+      "authPattern": "bearer",
+      "keys": [
+        "fc-key_1",
+        "fc-key_2"
+      ],
+      "strategy": "round-robin",
+      "cooldownMs": 60000
+    },
+    "tavily": {
+      "enabled": true,
+      "url": "https://mcp.tavily.com/mcp/",
+      "authPattern": "queryparam",
+      "queryParamName": "tavilyApiKey",
+      "keys": [
+        "tvly-key_1",
+        "tvly-key_2"
+      ],
+      "strategy": "round-robin",
+      "cooldownMs": 60000
+    },
+    "linkup": {
+      "enabled": true,
+      "url": "https://mcp.linkup.so/mcp",
+      "authPattern": "bearer",
+      "keys": [
+        "linkup_key_1",
+        "linkup_key_2"
+      ],
+      "strategy": "round-robin",
+      "cooldownMs": 60000
+    },
+    "brightdata": {
+      "enabled": true,
+      "url": "https://mcp.brightdata.com/mcp",
+      "authPattern": "bearer",
+      "keys": [
+        "bd_key_1",
+        "bd_key_2"
+      ],
+      "strategy": "round-robin",
+      "cooldownMs": 60000
+    },
+    "olostep": {
+      "enabled": true,
+      "url": "https://mcp.olostep.com/mcp",
+      "authPattern": "bearer",
+      "keys": [
+        "olostep_key_1",
+        "olostep_key_2"
+      ],
+      "strategy": "round-robin",
+      "cooldownMs": 300000
+    },
+
+    "dappier": {
+      "enabled": true,
+      "url": "https://mcp.dappier.com/mcp",
+      "authPattern": "queryparam",
+      "queryParamName": "apiKey",
+      "keys": [
+        "dappier_key_1",
+        "dappier_key_2"
+      ],
+      "strategy": "round-robin",
+      "cooldownMs": 300000
+    },
+    "parallel": {
+      "enabled": true,
+      "url": "https://search.parallel.ai/mcp",
+      "authPattern": "customheader",
+      "headerName": "x-api-key",
+      "keys": [
+        "parallel_key_1",
+        "parallel_key_2"
+      ],
+      "strategy": "round-robin",
+      "cooldownMs": 60000
+    }
+  }
+}
