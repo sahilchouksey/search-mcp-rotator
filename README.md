@@ -4,17 +4,63 @@
   <img src="https://raw.githubusercontent.com/sahilchouksey/search-mcp-rotator/main/poster.png" alt="Search MCP Rotator" width="100%" />
 </p>
 
-A local MCP (Model Context Protocol) proxy server that provides transparent API key rotation for search providers. When one key is exhausted, rate-limited, or returns any server-side error, the proxy automatically rotates to the next available key and retries the request — transparently, without the MCP client knowing a rotation occurred.
+A local MCP proxy that transparently rotates API keys across search providers. When a key is rate-limited, exhausted, or errors, it automatically switches to the next key and retries — invisible to the MCP client.
 
-## Features
+---
 
-- **Transparent Key Rotation**: Automatic failover between API keys
-- **Multi-Provider Support**: Supports 9 search providers with different auth patterns
-- **Flexible Rotation Strategies**: Round-robin, priority, and random selection
-- **Circuit Breaker Pattern**: Prevents cascading failures
-- **Configurable Cooldowns**: Smart recovery timing per provider
-- **Strategy-as-Tool-Argument**: LLMs can choose rotation strategy per request
-- **Comprehensive Error Detection**: Provider-specific exhaustion patterns
+## Quick Start
+
+### Step 1 — Add your API keys
+
+Run the interactive setup CLI to select providers and enter your keys:
+
+```bash
+npx search-mcp-rotator --setup
+```
+
+The wizard walks through each provider, lets you paste multiple keys at once (comma-separated), and writes config to `~/.config/search-mcp-rotator/config.json` automatically.
+
+> Press `Ctrl+O` on any provider screen to open its API key dashboard in your browser.
+
+### Step 2 — Add to your MCP client
+
+#### OpenCode — `~/.config/opencode/opencode.json`
+
+```json
+{
+  "mcp": {
+    "exa":        { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=exa"],        "enabled": true },
+    "firecrawl":  { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=firecrawl"],  "enabled": true },
+    "tavily":     { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=tavily"],     "enabled": true },
+    "linkup":     { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=linkup"],     "enabled": true },
+    "brightdata": { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=brightdata"], "enabled": true },
+    "olostep":    { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=olostep"],    "enabled": true },
+    "dappier":    { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=dappier"],    "enabled": true },
+    "parallel":   { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=parallel"],   "enabled": true }
+  }
+}
+```
+
+#### Pi agent — `~/.pi/agent/mcp.json`
+
+```json
+{
+  "mcpServers": {
+    "exa":        { "command": "npx", "args": ["-y", "search-mcp-rotator", "--provider=exa"],        "lifecycle": "lazy" },
+    "firecrawl":  { "command": "npx", "args": ["-y", "search-mcp-rotator", "--provider=firecrawl"],  "lifecycle": "lazy" },
+    "tavily":     { "command": "npx", "args": ["-y", "search-mcp-rotator", "--provider=tavily"],     "lifecycle": "lazy" },
+    "linkup":     { "command": "npx", "args": ["-y", "search-mcp-rotator", "--provider=linkup"],     "lifecycle": "lazy" },
+    "brightdata": { "command": "npx", "args": ["-y", "search-mcp-rotator", "--provider=brightdata"], "lifecycle": "lazy" },
+    "olostep":    { "command": "npx", "args": ["-y", "search-mcp-rotator", "--provider=olostep"],    "lifecycle": "lazy" },
+    "dappier":    { "command": "npx", "args": ["-y", "search-mcp-rotator", "--provider=dappier"],    "lifecycle": "lazy" },
+    "parallel":   { "command": "npx", "args": ["-y", "search-mcp-rotator", "--provider=parallel"],   "lifecycle": "lazy" }
+  }
+}
+```
+
+> Only include providers you configured in Step 1. No `--config` flag needed — reads from `~/.config/search-mcp-rotator/config.json` automatically. Restart your client after editing.
+
+---
 
 ## Supported Providers
 
@@ -23,22 +69,32 @@ A local MCP (Model Context Protocol) proxy server that provides transparent API 
 | **Exa** | Bearer header | Neural/semantic web search, code search |
 | **Firecrawl** | Bearer header | Web scraping, deep crawl, structured extraction |
 | **Linkup** | Bearer header | Real-time web search, source-cited answers |
-| **Bright Data** | Bearer header | 40+ scraping tools, Google SERP, Amazon |
+| **Bright Data** | Bearer header | 40+ scraping tools, Google SERP |
 | **Olostep** | Bearer header | Search + extract + AI answers with citations |
 | **Tavily** | Query param | Real-time web search, extract, map, crawl |
 | **Dappier** | Query param | Real-time news, finance, sports, weather |
 | **Parallel** | Custom header | Highest-accuracy general web search |
 
-## Installation
+---
+
+## Features
+
+- **Transparent Key Rotation** — automatic failover between API keys
+- **Multi-Provider Support** — 8 providers, different auth patterns handled automatically
+- **Flexible Rotation Strategies** — round-robin, priority, random per tool call
+- **Circuit Breaker** — prevents cascading failures
+- **Configurable Cooldowns** — smart recovery timing per provider
+- **Bulk Key Entry** — paste comma-separated keys during setup
+
+---
+
+## Manual Configuration
+
+Prefer editing config directly instead of `--setup`? Copy the example and add your keys:
 
 ```bash
-npm install
-npm run build
+cp config.example.json ~/.config/search-mcp-rotator/config.json
 ```
-
-## Configuration
-
-Copy `config.example.json` to `config.json` and add your API keys:
 
 ```json
 {
@@ -56,123 +112,65 @@ Copy `config.example.json` to `config.json` and add your API keys:
 }
 ```
 
-### Environment Variable Overrides
-
-Keys can be overridden via environment variables:
+Keys can also be set via environment variables:
 
 ```bash
 export EXA_KEYS="key1,key2,key3"
 export FIRECRAWL_KEYS="key1,key2"
 ```
 
-## Usage
-
-Start a rotator for a specific provider:
-
-```bash
-# Using built binary
-node dist/index.js --provider=exa --config=config.json
-
-# Or using npm script
-npm run dev -- --provider=exa --config=config.json
-```
-
-## OpenCode Integration
-
-Register each rotator as a local MCP server in `~/.config/opencode/opencode.json`:
-
-```json
-{
-  "mcpServers": {
-    "exa-rotator": {
-      "type": "local",
-      "command": "node",
-      "args": [
-        "/path/to/search-mcp-rotator/dist/index.js",
-        "--provider=exa"
-      ],
-      "env": {
-        "MCP_ROTATOR_CONFIG": "/path/to/config.json"
-      },
-      "enabled": true
-    }
-  }
-}
-```
+---
 
 ## Rotation Strategies
 
 Every tool call accepts an optional `strategy` parameter:
 
-- **`round-robin`** (default): Distribute requests evenly across keys
-- **`priority`**: Always use first healthy key, fallback to others
-- **`random`**: Random key selection to avoid patterns
+| Strategy | Behavior |
+|----------|----------|
+| `round-robin` (default) | Distribute requests evenly across keys |
+| `priority` | Always use first healthy key, fallback to others |
+| `random` | Random key selection |
 
-```typescript
-// Example tool call with strategy override
-{
-  "query": "AI news",
-  "strategy": "priority"  // Optional: overrides provider default
-}
-```
+---
 
 ## Architecture
 
 ```
-OpenCode (MCP client)
+MCP Client (OpenCode / Pi / etc.)
         │  stdio transport
         ▼
 ┌─────────────────────────┐
-│   Search MCP Rotator Proxy     │
-│  (local stdio server)   │
+│   Search MCP Rotator    │
+│   (local stdio proxy)   │
 │                         │
-│  ┌─────────────────┐    │
-│  │   KeyPool       │    │
-│  │  [key1, key2,   │    │
-│  │   key3, key4]   │    │
-│  │  activeIdx = 0  │    │
-│  │  degraded: Map  │    │
-│  └─────────────────┘    │
+│  KeyPool [k1, k2, k3]  │
+│  activeIdx = 0          │
+│  degraded: Map          │
 │                         │
-│  On tool call:          │
 │  1. pick active key     │
 │  2. inject into request │
 │  3. forward upstream    │
 │  4. on rate-limit:      │
 │     mark degraded       │
-│     rotate key          │
-│     retry same call     │
+│     rotate key, retry   │
 └─────────────────────────┘
-        │  HTTP (Streamable HTTP transport)
+        │  HTTP (Streamable HTTP)
         ▼
   Remote MCP Provider
-  (Exa / Firecrawl / etc.)
 ```
 
-## Error Detection
-
-The rotator detects exhaustion signals specific to each provider:
-
-- **HTTP Status Codes**: 401, 402, 429, etc.
-- **JSON-RPC Error Codes**: Provider-specific codes
-- **Message Patterns**: "rate limit", "quota", "credits exhausted"
-- **Special Cases**: Provider-specific error formats
+---
 
 ## Development
 
 ```bash
-# Install dependencies
 npm install
-
-# Development with auto-reload
-npm run dev -- --provider=exa
-
-# Type checking
-npm run typecheck
-
-# Build for production
 npm run build
+npm run dev -- --provider=exa   # watch mode
+npm run typecheck
 ```
+
+---
 
 ## License
 
