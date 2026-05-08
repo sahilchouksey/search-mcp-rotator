@@ -29,14 +29,14 @@ The wizard walks through each provider, lets you paste multiple keys at once (co
 ```json
 {
   "mcp": {
-    "exa":        { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=exa"],        "enabled": true },
-    "firecrawl":  { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=firecrawl"],  "enabled": true },
-    "tavily":     { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=tavily"],     "enabled": true },
-    "linkup":     { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=linkup"],     "enabled": true },
-    "brightdata": { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=brightdata"], "enabled": true },
-    "olostep":    { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=olostep"],    "enabled": true },
-    "dappier":    { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=dappier"],    "enabled": true },
-    "parallel":   { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=parallel"],   "enabled": true }
+    "exa":        { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=exa"],        "enabled": true, "timeout": 30000 },
+    "firecrawl":  { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=firecrawl"],  "enabled": true, "timeout": 30000 },
+    "tavily":     { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=tavily"],     "enabled": true, "timeout": 30000 },
+    "linkup":     { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=linkup"],     "enabled": true, "timeout": 30000 },
+    "brightdata": { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=brightdata"], "enabled": true, "timeout": 30000 },
+    "olostep":    { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=olostep"],    "enabled": true, "timeout": 30000 },
+    "dappier":    { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=dappier"],    "enabled": true, "timeout": 30000 },
+    "parallel":   { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=parallel"],   "enabled": true, "timeout": 30000 }
   }
 }
 ```
