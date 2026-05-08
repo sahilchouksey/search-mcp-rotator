@@ -1,6 +1,6 @@
 {
   "name": "search-mcp-rotator",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Local MCP proxy with automatic API key rotation",
   "type": "module",
   "bin": {
