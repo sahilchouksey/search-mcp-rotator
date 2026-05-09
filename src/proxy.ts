@@ -41,44 +41,13 @@ export class MCPProxy {
   }
   
   async start(): Promise<void> {
-    try {
-      // 1. Get first key
-      this.currentKey = this.keyPool.next()
-      
-      // 2. Connect to upstream with timeout
-      await Promise.race([
-        this.connectUpstream(this.currentKey),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Upstream connection timeout')), 25000)
-        )
-      ])
-      
-      // 3. Discover tools with timeout
-      this.tools = await Promise.race([
-        this.discoverTools(),
-        new Promise<Tool[]>((_, reject) => 
-          setTimeout(() => reject(new Error('Tool discovery timeout')), 25000)
-        )
-      ])
-      
-      // 4. Register handlers on local server
-      this.registerHandlers()
-      
-      // 5. Start stdio transport
-      const transport = new StdioServerTransport()
-      await this.server.connect(transport)
-      
-      logger.info(`MCP proxy started for ${this.providerName}`, {
-        toolCount: this.tools.length,
-        currentKey: this.maskKey(this.currentKey)
-      })
-      
-    } catch (error) {
-      logger.error(`Failed to start MCP proxy for ${this.providerName}`, {
-        error: (error as Error).message
-      })
-      throw error
-    }
+    // Register handlers immediately — upstream connects lazily on first tool call
+    this.registerHandlers()
+
+    const transport = new StdioServerTransport()
+    await this.server.connect(transport)
+
+    logger.info(`MCP proxy started for ${this.providerName}`)
   }
   
   private async connectUpstream(key: string): Promise<void> {
@@ -106,9 +75,21 @@ export class MCPProxy {
     return result.tools
   }
   
+  private async ensureConnected(): Promise<void> {
+    if (this.upstreamTransport) return
+    this.currentKey = this.keyPool.next()
+    await this.connectUpstream(this.currentKey)
+    this.tools = await this.discoverTools()
+    logger.info(`Connected to upstream for ${this.providerName}`, {
+      toolCount: this.tools.length,
+      currentKey: this.maskKey(this.currentKey)
+    })
+  }
+
   private registerHandlers(): void {
-    // tools/list — return discovered tools + inject strategy param into each
+    // tools/list — connect lazily on first call
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
+      await this.ensureConnected()
       const toolsWithStrategy = this.tools.map(tool => ({
         ...tool,
         inputSchema: this.injectStrategyParam(tool.inputSchema),
@@ -139,6 +120,8 @@ export class MCPProxy {
   }
   
   private async handleToolCall(request: any): Promise<CallToolResult> {
+    await this.ensureConnected()
+
     // Check if all keys are degraded early
     if (this.keyPool.allDegraded()) {
       throw new Error(

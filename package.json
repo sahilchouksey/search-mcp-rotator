@@ -1,6 +1,6 @@
 {
   "name": "search-mcp-rotator",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Transparent API key rotation proxy for MCP search providers — Exa, Firecrawl, Tavily, Linkup, Bright Data, Olostep, Dappier, Parallel",
   "type": "module",
   "bin": {
