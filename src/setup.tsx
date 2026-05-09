@@ -272,15 +272,22 @@ const DoneScreen: React.FC<{
       <Text bold>  Add to ~/.config/opencode/opencode.json:</Text>
       <Box marginBottom={1} />
       <Text dimColor>  {'  "mcp": {'}</Text>
-      {Object.keys(configs).map(id => (
-        <Box key={id} flexDirection="column">
-          <Text dimColor>{'    '}<Text color="white">"{id}"</Text><Text dimColor>: {'{'}</Text></Text>
-          <Text dimColor>{'      "type": "local",'}</Text>
-          <Text dimColor>{'      "command": ["npx", "-y", "search-mcp-rotator", "--provider='}{id}{'"]},'}</Text>
-          <Text dimColor>{'      "enabled": true'}</Text>
-          <Text dimColor>{'    },'}</Text>
-        </Box>
-      ))}
+      <Text dimColor>{'    '}<Text color="white">"search"</Text><Text dimColor>: {'{'}</Text></Text>
+      <Text dimColor>{'      "type": "local",'}</Text>
+      <Text dimColor>{'      "command": ["npx", "-y", "search-mcp-rotator"],'}</Text>
+      <Text dimColor>{'      "enabled": true,'}</Text>
+      <Text dimColor>{'      "timeout": 30000'}</Text>
+      <Text dimColor>{'    }'}</Text>
+      <Text dimColor>{'  }'}</Text>
+      <Box marginBottom={1} />
+      <Text bold>  Add to ~/.pi/agent/mcp.json:</Text>
+      <Box marginBottom={1} />
+      <Text dimColor>  {'  "mcpServers": {'}</Text>
+      <Text dimColor>{'    '}<Text color="white">"search"</Text><Text dimColor>: {'{'}</Text></Text>
+      <Text dimColor>{'      "command": "npx",'}</Text>
+      <Text dimColor>{'      "args": ["-y", "search-mcp-rotator"],'}</Text>
+      <Text dimColor>{'      "lifecycle": "lazy"'}</Text>
+      <Text dimColor>{'    }'}</Text>
       <Text dimColor>{'  }'}</Text>
       <Box marginBottom={1} />
       <Divider />

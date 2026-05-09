@@ -37,6 +37,32 @@ function saveToolsCache(cache: Record<string, Tool[]>): void {
   } catch {}
 }
 
+export async function warmupCache(providers: Record<string, ProviderConfig>): Promise<void> {
+  const cache = loadToolsCache()
+  const results = await Promise.allSettled(
+    Object.entries(providers)
+      .filter(([, cfg]) => cfg.enabled)
+      .map(async ([name, cfg]) => {
+        const keyPool = new KeyPool(cfg)
+        const authInjector = new AuthInjector(cfg)
+        const key = keyPool.next()
+        const { url, headers } = authInjector.inject(key, cfg.url)
+        const transport = new StreamableHTTPClientTransport(new URL(url), { requestInit: { headers } })
+        const client = new Client({ name: `${name}-warmup`, version: '1.0.0' }, { capabilities: {} })
+        await client.connect(transport)
+        const { tools } = await client.listTools()
+        cache[name] = tools
+        await client.close()
+        process.stdout.write(`  ✓ ${name} — ${tools.length} tools\n`)
+      })
+  )
+  saveToolsCache(cache)
+  const failed = results.filter(r => r.status === 'rejected')
+  if (failed.length) {
+    failed.forEach((r, i) => process.stdout.write(`  ✗ failed: ${(r as PromiseRejectedResult).reason}\n`))
+  }
+}
+
 export class MCPProxy {
   private server: Server
   private upstreamClient: Client

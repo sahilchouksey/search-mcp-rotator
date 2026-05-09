@@ -24,19 +24,19 @@ The wizard walks through each provider, lets you paste multiple keys at once (co
 
 ### Step 2 — Add to your MCP client
 
+One entry covers all your configured providers.
+
 #### OpenCode — `~/.config/opencode/opencode.json`
 
 ```json
 {
   "mcp": {
-    "exa":        { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=exa"],        "enabled": true, "timeout": 30000 },
-    "firecrawl":  { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=firecrawl"],  "enabled": true, "timeout": 30000 },
-    "tavily":     { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=tavily"],     "enabled": true, "timeout": 30000 },
-    "linkup":     { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=linkup"],     "enabled": true, "timeout": 30000 },
-    "brightdata": { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=brightdata"], "enabled": true, "timeout": 30000 },
-    "olostep":    { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=olostep"],    "enabled": true, "timeout": 30000 },
-    "dappier":    { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=dappier"],    "enabled": true, "timeout": 30000 },
-    "parallel":   { "type": "local", "command": ["npx", "-y", "search-mcp-rotator", "--provider=parallel"],   "enabled": true, "timeout": 30000 }
+    "search": {
+      "type": "local",
+      "command": ["npx", "-y", "search-mcp-rotator"],
+      "enabled": true,
+      "timeout": 30000
+    }
   }
 }
 ```
@@ -46,19 +46,18 @@ The wizard walks through each provider, lets you paste multiple keys at once (co
 ```json
 {
   "mcpServers": {
-    "exa":        { "command": "npx", "args": ["-y", "search-mcp-rotator", "--provider=exa"],        "lifecycle": "lazy" },
-    "firecrawl":  { "command": "npx", "args": ["-y", "search-mcp-rotator", "--provider=firecrawl"],  "lifecycle": "lazy" },
-    "tavily":     { "command": "npx", "args": ["-y", "search-mcp-rotator", "--provider=tavily"],     "lifecycle": "lazy" },
-    "linkup":     { "command": "npx", "args": ["-y", "search-mcp-rotator", "--provider=linkup"],     "lifecycle": "lazy" },
-    "brightdata": { "command": "npx", "args": ["-y", "search-mcp-rotator", "--provider=brightdata"], "lifecycle": "lazy" },
-    "olostep":    { "command": "npx", "args": ["-y", "search-mcp-rotator", "--provider=olostep"],    "lifecycle": "lazy" },
-    "dappier":    { "command": "npx", "args": ["-y", "search-mcp-rotator", "--provider=dappier"],    "lifecycle": "lazy" },
-    "parallel":   { "command": "npx", "args": ["-y", "search-mcp-rotator", "--provider=parallel"],   "lifecycle": "lazy" }
+    "search": {
+      "command": "npx",
+      "args": ["-y", "search-mcp-rotator"],
+      "lifecycle": "lazy"
+    }
   }
 }
 ```
 
-> Only include providers you configured in Step 1. No `--config` flag needed — reads from `~/.config/search-mcp-rotator/config.json` automatically. Restart your client after editing.
+> No `--config` flag needed — reads from `~/.config/search-mcp-rotator/config.json` automatically. Restart your client after editing.
+
+> Tools are exposed as `{provider}__{toolname}` (e.g. `exa__web_search_exa`, `tavily__web_search`).
 
 ---
 
