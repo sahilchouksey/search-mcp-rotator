@@ -7,14 +7,35 @@ import {
   ListToolsRequestSchema,
   Tool, 
   CallToolResult, 
-  ListToolsResult 
 } from '@modelcontextprotocol/sdk/types.js'
+import * as fs from 'fs'
+import * as path from 'path'
+import * as os from 'os'
 
 import type { ProviderConfig, RotationStrategy, ExhaustionError } from './types.js'
 import { KeyPool } from './key-pool.js'
 import { ExhaustionDetector, extractCooldown } from './detector.js'
 import { AuthInjector } from './auth-injector.js'
 import { logger } from './logger.js'
+
+const CACHE_DIR = path.join(os.homedir(), '.config', 'search-mcp-rotator')
+const CACHE_FILE = path.join(CACHE_DIR, 'tools-cache.json')
+
+function loadToolsCache(): Record<string, Tool[]> {
+  try {
+    if (fs.existsSync(CACHE_FILE)) {
+      return JSON.parse(fs.readFileSync(CACHE_FILE, 'utf-8'))
+    }
+  } catch {}
+  return {}
+}
+
+function saveToolsCache(cache: Record<string, Tool[]>): void {
+  try {
+    fs.mkdirSync(CACHE_DIR, { recursive: true })
+    fs.writeFileSync(CACHE_FILE, JSON.stringify(cache, null, 2))
+  } catch {}
+}
 
 export class MCPProxy {
   private server: Server
@@ -41,7 +62,14 @@ export class MCPProxy {
   }
   
   async start(): Promise<void> {
-    // Register handlers immediately — upstream connects lazily on first tool call
+    // Load cached tools so tools/list responds instantly without upstream call
+    const cache = loadToolsCache()
+    if (cache[this.providerName]?.length) {
+      this.tools = cache[this.providerName]
+      logger.info(`Loaded ${this.tools.length} cached tools for ${this.providerName}`)
+    }
+
+    // Register handlers — upstream connects lazily on first actual tool call
     this.registerHandlers()
 
     const transport = new StdioServerTransport()
@@ -79,7 +107,12 @@ export class MCPProxy {
     if (this.upstreamTransport) return
     this.currentKey = this.keyPool.next()
     await this.connectUpstream(this.currentKey)
-    this.tools = await this.discoverTools()
+    // Refresh tools from upstream and update cache
+    const fresh = await this.discoverTools()
+    this.tools = fresh
+    const cache = loadToolsCache()
+    cache[this.providerName] = fresh
+    saveToolsCache(cache)
     logger.info(`Connected to upstream for ${this.providerName}`, {
       toolCount: this.tools.length,
       currentKey: this.maskKey(this.currentKey)
@@ -87,9 +120,12 @@ export class MCPProxy {
   }
 
   private registerHandlers(): void {
-    // tools/list — connect lazily on first call
+    // tools/list — serve from cache instantly, connect upstream lazily on tool call
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      await this.ensureConnected()
+      // If no tools yet (first ever run), do a full upstream connect now
+      if (this.tools.length === 0) {
+        await this.ensureConnected()
+      }
       const toolsWithStrategy = this.tools.map(tool => ({
         ...tool,
         inputSchema: this.injectStrategyParam(tool.inputSchema),
