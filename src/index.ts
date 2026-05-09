@@ -6,7 +6,10 @@ import { ExhaustionDetector } from './detector.js'
 import { AuthInjector } from './auth-injector.js'
 import { MCPProxy } from './proxy.js'
 import { logger, setLogLevel, setProvider } from './logger.js'
-import { runSetup, DEFAULT_CONFIG_PATH } from './setup.js'
+import * as os from 'os'
+import * as path from 'path'
+
+const DEFAULT_CONFIG_PATH = path.join(os.homedir(), '.config', 'search-mcp-rotator', 'config.json')
 
 function parseArgs(argv: string[]): { provider?: string; config?: string; setup?: boolean } {
   const args: { provider?: string; config?: string; setup?: boolean } = {}
@@ -34,6 +37,7 @@ async function main(): Promise<void> {
     const args = parseArgs(process.argv)
 
     if (args.setup) {
+      const { runSetup } = await import('./setup.js')
       await runSetup(args.config)
       return
     }
