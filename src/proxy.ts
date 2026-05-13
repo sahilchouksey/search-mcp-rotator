@@ -218,7 +218,11 @@ export class MCPProxy {
           }
         }
         
-        const result = await this.upstreamClient.callTool(cleanRequest.params)
+        const result = await this.upstreamClient.callTool(
+          cleanRequest.params,
+          undefined,
+          { timeout: 300000 }
+        )
         
         // CHECK: Does the result look like an exhaustion error hidden inside HTTP 200?
         const mcpError = this.extractMcpLevelError(result)

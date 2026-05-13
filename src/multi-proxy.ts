@@ -47,6 +47,8 @@ interface ProviderState {
   currentKey: string
   tools: Tool[]
   connected: boolean
+  connectionPromise: Promise<void> | null
+  callLock: Promise<void>
 }
 
 // ── Tool name helpers ─────────────────────────────────────────────────────────
@@ -86,6 +88,8 @@ export class MultiProxy {
         currentKey: '',
         tools: [],
         connected: false,
+        connectionPromise: null,
+        callLock: Promise.resolve(),
       })
     }
   }
@@ -110,37 +114,53 @@ export class MultiProxy {
     })
   }
 
-  // ── Lazy upstream connection per provider ────────────────────────────────
+  // ── Lazy upstream connection per provider (race-safe) ────────────────────
   private async ensureConnected(state: ProviderState): Promise<void> {
     if (state.connected) return
+    // Concurrent callers share the same connection attempt
+    if (state.connectionPromise) return state.connectionPromise
 
-    state.currentKey = state.keyPool.next()
-    const { url, headers } = state.authInjector.inject(state.currentKey, state.config.url)
+    state.connectionPromise = (async () => {
+      try {
+        state.currentKey = state.keyPool.next()
+        const { url, headers } = state.authInjector.inject(state.currentKey, state.config.url)
 
-    state.transport = new StreamableHTTPClientTransport(
-      new URL(url),
-      { requestInit: { headers } }
-    )
-    await state.client.connect(state.transport)
-    state.connected = true
+        state.transport = new StreamableHTTPClientTransport(
+          new URL(url),
+          { requestInit: { headers } }
+        )
+        await state.client.connect(state.transport)
+        state.connected = true
 
-    // Refresh tools from upstream and update cache
-    const { tools } = await state.client.listTools()
-    state.tools = tools
-    const cache = loadToolsCache()
-    cache[state.name] = tools
-    saveToolsCache(cache)
+        // Refresh tools from upstream and update cache
+        const { tools } = await state.client.listTools()
+        state.tools = tools
+        const cache = loadToolsCache()
+        cache[state.name] = tools
+        saveToolsCache(cache)
 
-    logger.info(`Connected to upstream for ${state.name}`, {
-      toolCount: tools.length,
-      currentKey: state.currentKey.slice(0, 8) + '...',
-    })
+        logger.info(`Connected to upstream for ${state.name}`, {
+          toolCount: tools.length,
+          currentKey: state.currentKey.slice(0, 8) + '...',
+        })
+      } finally {
+        state.connectionPromise = null
+      }
+    })()
+
+    return state.connectionPromise
   }
 
   // ── Reconnect with a different key ───────────────────────────────────────
+  // NOTE: MCP SDK Client cannot be reused after close() — create a fresh instance.
   private async reconnect(state: ProviderState, key: string): Promise<void> {
     try { await state.client.close() } catch {}
     state.connected = false
+
+    state.client = new Client(
+      { name: `${state.name}-client`, version: '1.0.0' },
+      { capabilities: {} }
+    )
 
     const { url, headers } = state.authInjector.inject(key, state.config.url)
     state.transport = new StreamableHTTPClientTransport(
@@ -202,7 +222,16 @@ export class MultiProxy {
       const state = this.providers.get(parsed.provider)
       if (!state) throw new Error(`Unknown provider: ${parsed.provider}`)
 
-      return this.handleToolCall(state, parsed.toolName, request)
+      // Serialize calls to the same provider (Client is not concurrent-safe)
+      const previousLock = state.callLock
+      let releaseLock!: () => void
+      state.callLock = new Promise<void>(r => { releaseLock = r })
+      await previousLock
+      try {
+        return await this.handleToolCall(state, parsed.toolName, request)
+      } finally {
+        releaseLock()
+      }
     })
   }
 
@@ -233,16 +262,22 @@ export class MultiProxy {
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
+        // First attempt: use existing connection.
+        // Retry: rotate to next healthy key.
         if (attempt > 0) {
           const nextKey = state.keyPool.next(strategyOverride)
           if (!nextKey || nextKey === state.currentKey) break
           await this.reconnect(state, nextKey)
-        } else {
-          const key = state.keyPool.next(strategyOverride)
-          if (key !== state.currentKey) await this.reconnect(state, key)
         }
 
-        const result = await state.client.callTool(cleanRequest.params)
+        // Long timeout (5 min) — heavy ops like research, page fetch, agent jobs
+        // need more than the SDK's 60s default. The MCP client wrapping us can
+        // still apply its own shorter timeout if desired.
+        const result = await state.client.callTool(
+          cleanRequest.params,
+          undefined,
+          { timeout: 300000 }
+        )
 
         const mcpError = this.extractMcpError(state.name, result)
         if (mcpError && state.detector.isExhausted(mcpError)) {
