@@ -8,32 +8,11 @@ import {
   Tool,
   CallToolResult,
 } from '@modelcontextprotocol/sdk/types.js'
-import * as fs from 'fs'
-import * as path from 'path'
-import * as os from 'os'
-
 import type { ProviderConfig, RotationStrategy, ExhaustionError } from './types.js'
 import { KeyPool } from './key-pool.js'
 import { ExhaustionDetector, extractCooldown } from './detector.js'
 import { AuthInjector } from './auth-injector.js'
 import { logger } from './logger.js'
-
-const CACHE_DIR = path.join(os.homedir(), '.config', 'search-mcp-rotator')
-const CACHE_FILE = path.join(CACHE_DIR, 'tools-cache.json')
-
-function loadToolsCache(): Record<string, Tool[]> {
-  try {
-    if (fs.existsSync(CACHE_FILE)) return JSON.parse(fs.readFileSync(CACHE_FILE, 'utf-8'))
-  } catch {}
-  return {}
-}
-
-function saveToolsCache(cache: Record<string, Tool[]>): void {
-  try {
-    fs.mkdirSync(CACHE_DIR, { recursive: true })
-    fs.writeFileSync(CACHE_FILE, JSON.stringify(cache, null, 2))
-  } catch {}
-}
 
 // ── Per-provider state ────────────────────────────────────────────────────────
 interface ProviderState {
@@ -95,15 +74,6 @@ export class MultiProxy {
   }
 
   async start(): Promise<void> {
-    // Load cached tools for all providers — instant, no network
-    const cache = loadToolsCache()
-    for (const [name, state] of this.providers) {
-      if (cache[name]?.length) {
-        state.tools = cache[name]
-        logger.info(`Loaded ${state.tools.length} cached tools for ${name}`)
-      }
-    }
-
     this.registerHandlers()
 
     const transport = new StdioServerTransport()
@@ -132,12 +102,11 @@ export class MultiProxy {
         await state.client.connect(state.transport)
         state.connected = true
 
-        // Refresh tools from upstream and update cache
+        // Always fetch fresh tools from upstream — no disk cache. Providers can
+        // change/add/remove tools at any time; a stale cache would expose
+        // wrong schemas and missing tools to the LLM client.
         const { tools } = await state.client.listTools()
         state.tools = tools
-        const cache = loadToolsCache()
-        cache[state.name] = tools
-        saveToolsCache(cache)
 
         logger.info(`Connected to upstream for ${state.name}`, {
           toolCount: tools.length,
@@ -189,17 +158,26 @@ export class MultiProxy {
 
   // ── Register MCP handlers ────────────────────────────────────────────────
   private registerHandlers(): void {
-    // tools/list — serve all providers' tools from cache instantly
+    // tools/list — fetch fresh from all providers in parallel.
+    // Tools are kept in memory for the lifetime of this process (per-call
+    // refresh would be wasteful), but NEVER persisted to disk so we always
+    // pick up upstream tool changes on next process start.
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      const allTools: Tool[] = []
+      // Connect all providers that haven't been connected yet — in parallel.
+      await Promise.allSettled(
+        [...this.providers.entries()]
+          .filter(([, state]) => state.tools.length === 0)
+          .map(async ([name, state]) => {
+            try {
+              await this.ensureConnected(state)
+            } catch (e) {
+              logger.warn(`Could not fetch tools for ${name}: ${(e as Error).message}`)
+            }
+          })
+      )
 
+      const allTools: Tool[] = []
       for (const [name, state] of this.providers) {
-        // If no cache yet, connect upstream now (first-ever run)
-        if (state.tools.length === 0) {
-          try { await this.ensureConnected(state) } catch (e) {
-            logger.warn(`Could not fetch tools for ${name}: ${(e as Error).message}`)
-          }
-        }
         for (const tool of state.tools) {
           allTools.push({
             ...tool,

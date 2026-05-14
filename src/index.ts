@@ -35,21 +35,15 @@ async function main(): Promise<void> {
     if (args.setup) {
       const { runSetup } = await import('./setup.js')
       await runSetup(args.config)
-      // Auto-warmup cache after setup so first MCP start is instant
-      try {
-        const config = await loadConfig(configPath)
-        process.stdout.write('\nWarming tools cache for faster MCP startup...\n')
-        const { warmupCache } = await import('./proxy.js')
-        await warmupCache(config.providers)
-        process.stdout.write('Cache ready.\n')
-      } catch {}
       return
     }
 
-    // ── Warmup ─────────────────────────────────────────────────────────────
+    // ── Warmup ─ probe all providers in parallel & report tool counts ──────
+    // No disk cache is written; this exists purely to verify connectivity and
+    // surface schema info to the user during onboarding/troubleshooting.
     if (args.warmup) {
       const config = await loadConfig(configPath)
-      process.stdout.write('Warming tools cache...\n')
+      process.stdout.write('Probing all configured providers...\n')
       const { warmupCache } = await import('./proxy.js')
       await warmupCache(config.providers)
       process.stdout.write('Done.\n')

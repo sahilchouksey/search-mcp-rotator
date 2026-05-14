@@ -8,37 +8,17 @@ import {
   Tool, 
   CallToolResult, 
 } from '@modelcontextprotocol/sdk/types.js'
-import * as fs from 'fs'
-import * as path from 'path'
-import * as os from 'os'
-
 import type { ProviderConfig, RotationStrategy, ExhaustionError } from './types.js'
 import { KeyPool } from './key-pool.js'
 import { ExhaustionDetector, extractCooldown } from './detector.js'
 import { AuthInjector } from './auth-injector.js'
 import { logger } from './logger.js'
 
-const CACHE_DIR = path.join(os.homedir(), '.config', 'search-mcp-rotator')
-const CACHE_FILE = path.join(CACHE_DIR, 'tools-cache.json')
-
-function loadToolsCache(): Record<string, Tool[]> {
-  try {
-    if (fs.existsSync(CACHE_FILE)) {
-      return JSON.parse(fs.readFileSync(CACHE_FILE, 'utf-8'))
-    }
-  } catch {}
-  return {}
-}
-
-function saveToolsCache(cache: Record<string, Tool[]>): void {
-  try {
-    fs.mkdirSync(CACHE_DIR, { recursive: true })
-    fs.writeFileSync(CACHE_FILE, JSON.stringify(cache, null, 2))
-  } catch {}
-}
-
+// Probe upstream providers in parallel and report tool counts.
+// No disk caching — providers may change tools at any time, so we always
+// fetch fresh on each process start. This is a no-op for runtime behavior,
+// only used by the `--warmup` CLI flag for diagnostic reporting.
 export async function warmupCache(providers: Record<string, ProviderConfig>): Promise<void> {
-  const cache = loadToolsCache()
   const results = await Promise.allSettled(
     Object.entries(providers)
       .filter(([, cfg]) => cfg.enabled)
@@ -51,15 +31,13 @@ export async function warmupCache(providers: Record<string, ProviderConfig>): Pr
         const client = new Client({ name: `${name}-warmup`, version: '1.0.0' }, { capabilities: {} })
         await client.connect(transport)
         const { tools } = await client.listTools()
-        cache[name] = tools
         await client.close()
         process.stdout.write(`  ✓ ${name} — ${tools.length} tools\n`)
       })
   )
-  saveToolsCache(cache)
   const failed = results.filter(r => r.status === 'rejected')
   if (failed.length) {
-    failed.forEach((r, i) => process.stdout.write(`  ✗ failed: ${(r as PromiseRejectedResult).reason}\n`))
+    failed.forEach(r => process.stdout.write(`  ✗ failed: ${(r as PromiseRejectedResult).reason}\n`))
   }
 }
 
@@ -88,14 +66,7 @@ export class MCPProxy {
   }
   
   async start(): Promise<void> {
-    // Load cached tools so tools/list responds instantly without upstream call
-    const cache = loadToolsCache()
-    if (cache[this.providerName]?.length) {
-      this.tools = cache[this.providerName]
-      logger.info(`Loaded ${this.tools.length} cached tools for ${this.providerName}`)
-    }
-
-    // Register handlers — upstream connects lazily on first actual tool call
+    // Register handlers — upstream connects lazily on first tools/list or tools/call
     this.registerHandlers()
 
     const transport = new StdioServerTransport()
@@ -133,12 +104,9 @@ export class MCPProxy {
     if (this.upstreamTransport) return
     this.currentKey = this.keyPool.next()
     await this.connectUpstream(this.currentKey)
-    // Refresh tools from upstream and update cache
-    const fresh = await this.discoverTools()
-    this.tools = fresh
-    const cache = loadToolsCache()
-    cache[this.providerName] = fresh
-    saveToolsCache(cache)
+    // Always fetch fresh tools from upstream — no disk cache. Providers can
+    // change/add/remove tools at any time.
+    this.tools = await this.discoverTools()
     logger.info(`Connected to upstream for ${this.providerName}`, {
       toolCount: this.tools.length,
       currentKey: this.maskKey(this.currentKey)
@@ -146,9 +114,8 @@ export class MCPProxy {
   }
 
   private registerHandlers(): void {
-    // tools/list — serve from cache instantly, connect upstream lazily on tool call
+    // tools/list — fetch fresh from upstream. In-memory only, not persisted.
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      // If no tools yet (first ever run), do a full upstream connect now
       if (this.tools.length === 0) {
         await this.ensureConnected()
       }
