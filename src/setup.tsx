@@ -57,8 +57,8 @@ const ProviderSelect: React.FC<{
   const [selected, setSelected] = useState<Set<ProviderId>>(new Set())
 
   useInput((input, key) => {
-    if (key.upArrow)   setCursor(c => Math.max(0, c - 1))
-    if (key.downArrow) setCursor(c => Math.min(PROVIDERS.length - 1, c + 1))
+    if (key.upArrow || input === "k")   setCursor(c => Math.max(0, c - 1))
+    if (key.downArrow || input === "j") setCursor(c => Math.min(PROVIDERS.length - 1, c + 1))
 
     if (input === ' ') {
       setSelected(s => {
