@@ -35,7 +35,7 @@ One entry covers all your configured providers.
       "type": "local",
       "command": ["npx", "-y", "search-mcp-rotator"],
       "enabled": true,
-      "timeout": 30000
+      "timeout": 60000
     }
   }
 }
