@@ -1,4 +1,83 @@
-import type { ExhaustionError, ExhaustionPatternConfig } from './types.js'
+import type { ExhaustionError, ExhaustionPatternConfig } from "./types.js";
+
+const MINUTE_MS = 60 * 1000;
+const HOUR_MS = 60 * MINUTE_MS;
+const DAY_MS = 24 * HOUR_MS;
+const YEAR_MS = 365 * DAY_MS;
+
+function stringifyValue(value: unknown): string {
+  if (value === undefined || value === null) return "";
+  if (typeof value === "string") return value;
+
+  try {
+    return JSON.stringify(value) ?? String(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function getTextSources(error: ExhaustionError): string[] {
+  return [
+    error.message,
+    error.mcpResultText,
+    error.toolErrorText,
+    stringifyValue(error.body),
+  ].filter((text): text is string => Boolean(text));
+}
+
+function getCombinedText(error: ExhaustionError): string {
+  return getTextSources(error).join(" ");
+}
+
+function getLowerText(error: ExhaustionError): string {
+  return getCombinedText(error).toLowerCase();
+}
+
+function parseStatusCodeFromText(text: string | undefined): number | undefined {
+  if (!text) return undefined;
+  const match = text.match(/(?:status code|http|error)\s*(?:\(|:)?\s*(\d{3})/i);
+  return match ? Number(match[1]) : undefined;
+}
+
+function getStatusCode(error: ExhaustionError): number | undefined {
+  return error.statusCode ?? parseStatusCodeFromText(getCombinedText(error));
+}
+
+function includesAny(text: string, patterns: readonly string[]): boolean {
+  return patterns.some((pattern) => text.includes(pattern));
+}
+
+function matchesAny(text: string, patterns: readonly RegExp[]): boolean {
+  return patterns.some((pattern) => pattern.test(text));
+}
+
+function getHeader(
+  headers: Record<string, string> | undefined,
+  name: string,
+): string | undefined {
+  if (!headers) return undefined;
+
+  const target = name.toLowerCase();
+  for (const [key, value] of Object.entries(headers)) {
+    if (key.toLowerCase() === target) return String(value);
+  }
+  return undefined;
+}
+
+function parseRetryAfterText(text: string): number | undefined {
+  const match = text.match(
+    /retry after\s+(\d+)\s*(ms|milliseconds?|s|sec|secs|seconds?|m|mins|minutes?)?/i,
+  );
+  if (!match) return undefined;
+
+  const value = Number(match[1]);
+  if (!Number.isFinite(value)) return undefined;
+
+  const unit = (match[2] ?? "s").toLowerCase();
+  if (unit.startsWith("ms") || unit.startsWith("millisecond")) return value;
+  if (unit.startsWith("m") && !unit.startsWith("ms")) return value * MINUTE_MS;
+  return value * 1000;
+}
 
 // Provider-specific exhaustion patterns from PROVIDERS.md
 export const PROVIDER_EXHAUSTION_CONFIG = {
@@ -6,48 +85,77 @@ export const PROVIDER_EXHAUSTION_CONFIG = {
     httpStatusCodes: [401, 402, 429],
     jsonRpcErrorCodes: [-32000],
     messagePatterns: [
-      'invalid api key', 'no_more_credits', 'api_key_budget_exceeded', 'team_budget_exceeded',
-      'credits exhausted', 'payment required', 'account credits', 'spending budget',
-      'rate limit', 'too many requests', "you've exceeded your exa rate limit",
-      "you've hit exa's free mcp rate limit", 'quota',
+      "invalid api key",
+      "no_more_credits",
+      "api_key_budget_exceeded",
+      "team_budget_exceeded",
+      "x402_payment_required",
+      "credits exhausted",
+      "payment required",
+      "account credits",
+      "spending budget",
+      "rate limit",
+      "too many requests",
+      "you've exceeded your exa rate limit",
+      "you've hit exa's free mcp rate limit",
+      "quota",
     ],
-    cooldownOverrides: { 402: 3600000, 401: 31536000000 },
-    hasRetryAfterHeader: true, // free-tier MCP 429 only
+    cooldownOverrides: { 402: HOUR_MS, 401: YEAR_MS },
+    hasRetryAfterHeader: true,
   },
 
   firecrawl: {
     httpStatusCodes: [401, 402, 429, 500, 502, 503, 504],
     jsonRpcErrorCodes: [],
     messagePatterns: [
-      'rate limit exceeded', 'request rate limit exceeded', 'concurrency limit reached',
-      'payment required', 'insufficient credits', 'payment required to access',
-      'unauthorized: invalid token', 'unauthorized: token missing', 'unauthorized',
-      'retry after', 'error creating server',
+      "rate limit exceeded",
+      "request rate limit exceeded",
+      "concurrency limit reached",
+      "payment required",
+      "insufficient credits",
+      "payment required to access",
+      "unauthorized: invalid token",
+      "unauthorized: token missing",
+      "unauthorized",
+      "retry after",
+      "error creating server",
     ],
-    cooldownOverrides: { 402: 86400000, 401: 604800000 },
-    hasRetryAfterHeader: true, // 429 REST API
+    cooldownOverrides: { 402: DAY_MS, 401: 7 * DAY_MS },
+    hasRetryAfterHeader: true,
   },
 
   tavily: {
     httpStatusCodes: [401, 429, 432, 433],
     jsonRpcErrorCodes: [],
     messagePatterns: [
-      'authentication required', 'unauthorized', 'invalid api key', 'missing or invalid',
-      'excessive requests', 'rate of requests', 'usage limit', 'pay-as-you-go',
-      'paygo limit', 'search failed',
+      "authentication required",
+      "unauthorized",
+      "invalid api key",
+      "missing or invalid",
+      "excessive requests",
+      "rate of requests",
+      "usage limit",
+      "pay-as-you-go",
+      "paygo limit",
     ],
-    cooldownOverrides: { 432: 86400000, 433: 3600000, 401: 31536000000 },
-    hasRetryAfterHeader: true, // 429 REST API
+    cooldownOverrides: { 432: DAY_MS, 433: HOUR_MS, 401: YEAR_MS },
+    hasRetryAfterHeader: true,
   },
 
   linkup: {
     httpStatusCodes: [401, 403, 429],
     jsonRpcErrorCodes: [-32000],
     messagePatterns: [
-      'unauthorized action', 'api key is required', 'insufficient', 'too many requests',
-      'out of credit', 'credit', 'rate limit',
+      "unauthorized action",
+      "api key is required",
+      "insufficient_funds_credits",
+      "too_many_requests",
+      "too many requests",
+      "out of credit",
+      "insufficient funds",
+      "rate limit",
     ],
-    cooldownOverrides: {}, // no Retry-After; use x-ratelimit-reset (seconds) when available
+    cooldownOverrides: {},
     hasRetryAfterHeader: false,
   },
 
@@ -55,24 +163,43 @@ export const PROVIDER_EXHAUSTION_CONFIG = {
     httpStatusCodes: [401, 402, 407, 429],
     jsonRpcErrorCodes: [],
     messagePatterns: [
-      'http 401: auth method is not supported', 'http 401: token expired', 'http 401',
-      '5,000 request monthly limit',
-      'monthly limit for bright data mcp', 'usage limit', 'zone has reached usage limit',
-      'http 502', 'http 429', 'http 407', 'account is suspended', 'kyc required', 'http 402',
+      "auth method is not supported",
+      "token expired",
+      "5,000 request monthly limit",
+      "monthly limit for bright data mcp",
+      "usage limit",
+      "zone has reached usage limit",
+      "client_10100",
+      "client_10110",
+      "policy_20130",
+      "policy_20140",
+      "policy_20220",
+      "policy_20221",
+      "policy_20222",
+      "account is suspended",
+      "kyc required",
     ],
-    cooldownOverrides: {}, // use toolErrorText to distinguish (see isBrightDataExhausted)
-    hasRetryAfterHeader: false, // not at MCP layer
+    cooldownOverrides: {},
+    hasRetryAfterHeader: false,
   },
 
   olostep: {
     httpStatusCodes: [401, 402, 403],
     jsonRpcErrorCodes: [],
     messagePatterns: [
-      'invalid_api_key', 'invalid api key', 'your api key is invalid',
-      'credits exhausted', 'payment required',
-      'olostep api error: 401', 'olostep api error: 402', 'olostep api error: 403',
+      "invalid_api_key",
+      "invalid api key",
+      "your api key is invalid",
+      "credits exhausted",
+      "payment required",
+      "olostep api error: 401",
+      "olostep api error: 402",
+      "olostep api error: 403",
+      "access denied",
+      "feature approval required",
+      "feature not enabled",
     ],
-    cooldownOverrides: {}, // no headers; fixed 300000 ms default
+    cooldownOverrides: {},
     hasRetryAfterHeader: false,
   },
 
@@ -80,11 +207,19 @@ export const PROVIDER_EXHAUSTION_CONFIG = {
     httpStatusCodes: [401, 402],
     jsonRpcErrorCodes: [],
     messagePatterns: [
-      'error: failed to retrieve real-time information', 'error: failed to retrieve',
-      'error: unable to retrieve', 'error: authentication', 'error: unauthorized',
-      'missing authentication',
+      "error: failed to retrieve real-time information",
+      "error: failed to retrieve",
+      "error: unable to retrieve",
+      "error: authentication",
+      "error: unauthorized",
+      "error: invalid",
+      "quota",
+      "rate limit",
+      "credits",
+      "billing",
+      "missing authentication",
     ],
-    cooldownOverrides: {}, // no headers; fixed 300000 ms default
+    cooldownOverrides: {},
     hasRetryAfterHeader: false,
   },
 
@@ -92,270 +227,491 @@ export const PROVIDER_EXHAUSTION_CONFIG = {
     httpStatusCodes: [401, 402, 429],
     jsonRpcErrorCodes: [],
     messagePatterns: [
-      'oauth.v2.invalidapikey', 'steps.oauth.v2.failedtoresolveapikey', 'oauth.v2.apikeyexpired',
-      'oauth.v2.apikeynotapproved', 'invalid apikey', 'failedtoresolveapikey',
-      'invalid api key', 'rate limit', 'too many requests', 'insufficient credit',
-      'quota exceeded', 'code":16',
+      "oauth.v2.invalidapikey",
+      "steps.oauth.v2.failedtoresolveapikey",
+      "oauth.v2.invalidapikeyforgivenresource",
+      "oauth.v2.apikeyexpired",
+      "oauth.v2.apikeynotapproved",
+      "invalid apikey",
+      "failedtoresolveapikey",
+      "failed to resolve api key",
+      "invalid api key",
+      "invalid api key (c.1)",
+      "rate limit exceeded",
+      "too many requests",
+      "insufficient credit",
+      "insufficient credits",
+      "payment required",
+      "account balance depleted",
+      "quota exceeded",
+      'code":16',
+      'code": 16',
     ],
-    cooldownOverrides: {}, // no headers; fixed 60000 ms default
+    cooldownOverrides: {},
     hasRetryAfterHeader: false,
   },
-} as const
+} as const;
 
 export class ExhaustionDetector {
-  private patterns: ExhaustionPatternConfig
-  private providerName: string
+  private patterns: ExhaustionPatternConfig;
+  private providerName: string;
 
-  constructor(providerName: string, customPatterns?: Partial<ExhaustionPatternConfig>) {
-    this.providerName = providerName
-    
-    // Get default patterns for this provider
-    const defaultPatterns = (PROVIDER_EXHAUSTION_CONFIG as any)[providerName] || {
+  constructor(
+    providerName: string,
+    customPatterns?: Partial<ExhaustionPatternConfig>,
+  ) {
+    this.providerName = providerName;
+
+    const defaultPatterns = (PROVIDER_EXHAUSTION_CONFIG as any)[
+      providerName
+    ] || {
       httpStatusCodes: [429, 402, 403, 401],
       jsonRpcErrorCodes: [],
-      messagePatterns: ['rate limit', 'quota', 'credits', 'exhausted', 'too many requests', 'billing'],
+      messagePatterns: [
+        "rate limit",
+        "quota",
+        "credits",
+        "exhausted",
+        "too many requests",
+        "billing",
+      ],
       cooldownOverrides: {},
-      hasRetryAfterHeader: false
-    }
-    
-    // Merge with custom patterns
+      hasRetryAfterHeader: false,
+    };
+
     this.patterns = {
-      httpStatusCodes: customPatterns?.httpStatusCodes || defaultPatterns.httpStatusCodes,
-      jsonRpcErrorCodes: customPatterns?.jsonRpcErrorCodes || defaultPatterns.jsonRpcErrorCodes,
-      messagePatterns: customPatterns?.messagePatterns || defaultPatterns.messagePatterns,
-      cooldownOverrides: { ...defaultPatterns.cooldownOverrides, ...customPatterns?.cooldownOverrides },
-      hasRetryAfterHeader: customPatterns?.hasRetryAfterHeader ?? defaultPatterns.hasRetryAfterHeader
-    }
+      httpStatusCodes:
+        customPatterns?.httpStatusCodes || defaultPatterns.httpStatusCodes,
+      jsonRpcErrorCodes:
+        customPatterns?.jsonRpcErrorCodes || defaultPatterns.jsonRpcErrorCodes,
+      messagePatterns:
+        customPatterns?.messagePatterns || defaultPatterns.messagePatterns,
+      cooldownOverrides: {
+        ...defaultPatterns.cooldownOverrides,
+        ...customPatterns?.cooldownOverrides,
+      },
+      hasRetryAfterHeader:
+        customPatterns?.hasRetryAfterHeader ??
+        defaultPatterns.hasRetryAfterHeader,
+    };
   }
 
-  /**
-   * Determine if an error indicates key exhaustion
-   */
   isExhausted(error: ExhaustionError): boolean {
-    // Provider-specific logic
     switch (this.providerName) {
-      case 'exa':
-        return this.isExaExhausted(error)
-      case 'firecrawl':
-        return this.isFirecrawlExhausted(error)
-      case 'tavily':
-        return this.isTavilyExhausted(error)
-      case 'linkup':
-        return this.isLinkupExhausted(error)
-      case 'brightdata':
-        return this.isBrightDataExhausted(error)
-      case 'olostep':
-        return this.isOlostepExhausted(error)
-      case 'dappier':
-        return this.isDappierExhausted(error)
-      case 'parallel':
-        return this.isParallelExhausted(error)
+      case "exa":
+        return this.isExaExhausted(error);
+      case "firecrawl":
+        return this.isFirecrawlExhausted(error);
+      case "tavily":
+        return this.isTavilyExhausted(error);
+      case "linkup":
+        return this.isLinkupExhausted(error);
+      case "brightdata":
+        return this.isBrightDataExhausted(error);
+      case "olostep":
+        return this.isOlostepExhausted(error);
+      case "dappier":
+        return this.isDappierExhausted(error);
+      case "parallel":
+        return this.isParallelExhausted(error);
       default:
-        return this.isGenericExhausted(error)
+        return this.isGenericExhausted(error);
     }
   }
 
   private isExaExhausted(error: ExhaustionError): boolean {
-    const ROTATE_STATUSES = [401, 402, 429]
-    const ROTATE_PATTERNS = [
-      'invalid api key', 'no_more_credits', 'api_key_budget_exceeded',
-      'team_budget_exceeded', 'credits exhausted', 'payment required',
-      'account credits', 'spending budget', 'rate limit', 'too many requests',
-      "you've exceeded your exa rate limit", "you've hit exa's free mcp rate limit", 'quota',
-    ]
-    
-    if (error.statusCode && ROTATE_STATUSES.includes(error.statusCode)) return true
-    if (error.code === -32000) return true
-    
-    const msg = (error.message ?? '').toLowerCase()
-    const statusMatch = msg.match(/error \((\d{3})\):/i)
-    if (statusMatch && ROTATE_STATUSES.includes(+statusMatch[1])) return true
-    if (ROTATE_PATTERNS.some(p => msg.includes(p))) return true
-    
-    const body = typeof error.body === 'string' ? error.body.toLowerCase() : JSON.stringify(error.body ?? '').toLowerCase()
-    return ROTATE_PATTERNS.some(p => body.includes(p))
+    const status = getStatusCode(error);
+    const text = getLowerText(error);
+
+    if (status && [400, 403, 404, 422, 500, 502, 503, 504].includes(status)) {
+      return false;
+    }
+    if (status && [401, 402, 429].includes(status)) return true;
+
+    if (
+      error.code === -32000 &&
+      text.includes("exa") &&
+      text.includes("rate limit")
+    ) {
+      return true;
+    }
+
+    return includesAny(text, [
+      "invalid api key",
+      "no_more_credits",
+      "api_key_budget_exceeded",
+      "team_budget_exceeded",
+      "x402_payment_required",
+      "account credits exhausted",
+      "payment required",
+      "spending budget",
+      "you've exceeded your exa rate limit",
+      "you've hit exa's free mcp rate limit",
+      "rate limit",
+      "quota",
+    ]);
   }
 
   private isFirecrawlExhausted(error: ExhaustionError): boolean {
-    const ROTATE_STATUSES = new Set([429, 402, 401, 500, 502, 503, 504])
-    const ROTATE_PATTERNS = [
-      'rate limit exceeded', 'concurrency limit reached', 'payment required',
-      'insufficient credits', 'unauthorized: invalid token', 'unauthorized: token missing',
-      'unauthorized', 'retry after', 'error creating server',
-    ]
-    const HARD_STATUSES = new Set([400, 404, 408, 409, 413, 422])
-    
-    const msg = (error.message ?? error.mcpResultText ?? JSON.stringify(error.body ?? '')).toLowerCase()
-    if (error.statusCode && HARD_STATUSES.has(error.statusCode)) return false
-    if (error.statusCode && ROTATE_STATUSES.has(error.statusCode)) return true
-    return ROTATE_PATTERNS.some(p => msg.includes(p))
+    const status = getStatusCode(error);
+    const text = getLowerText(error);
+
+    if (status && [400, 404, 408, 409, 413, 422].includes(status)) return false;
+    if (
+      includesAny(text, [
+        "scrape_all_engines_failed",
+        "scrape_ssl_error",
+        "scrape_site_error",
+        "scrape_dns_resolution_error",
+        "scrape_action_error",
+        "scrape_pdf_",
+        "scrape_zdr_violation_error",
+        "scrape_unsupported_file_error",
+        "scrape_lockdown_cache_miss",
+      ])
+    ) {
+      return false;
+    }
+
+    if (status && [401, 402, 429, 500, 502, 503, 504].includes(status)) {
+      return true;
+    }
+
+    return includesAny(text, [
+      "rate limit exceeded",
+      "request rate limit exceeded",
+      "concurrency limit reached",
+      "payment required",
+      "insufficient credits",
+      "unauthorized: invalid token",
+      "unauthorized: token missing",
+      "error creating server",
+    ]);
   }
 
   private isTavilyExhausted(error: ExhaustionError): boolean {
-    const status = error?.statusCode
-    if (status !== undefined) {
-      if ([429, 432, 433, 401].includes(status)) return true
-      return false
+    const status = getStatusCode(error);
+    const text = getLowerText(error);
+
+    if (status === 402) return false;
+    if (
+      status &&
+      [400, 404, 408, 409, 422, 500, 502, 503, 504].includes(status)
+    ) {
+      return false;
     }
-    
-    // Check MCP content for Tavily's special case (isError: false but content has error)
-    let inner: any = null
-    try { 
-      inner = JSON.parse(error?.mcpResultText ?? '') 
-    } catch {}
-    
-    if (inner) {
-      const detail = (inner.detail ?? '').toLowerCase()
-      if (detail.includes('authentication required') || detail.includes('excessive requests') ||
-          detail.includes('usage limit') || detail.includes('pay-as-you-go')) return true
+    if (status === 401) {
+      if (
+        includesAny(text, [
+          "invalid_token",
+          "bearer token is invalid",
+          "authentication failed. the provided bearer token",
+        ])
+      ) {
+        return false;
+      }
+      return true;
     }
-    
-    const combined = (error?.message ?? '') + JSON.stringify(error?.body ?? '')
-    return ['authentication required', 'unauthorized', 'excessive requests',
-            'usage limit', 'pay-as-you-go', 'search failed'].some(p => combined.toLowerCase().includes(p))
+    if (status && [429, 432, 433].includes(status)) return true;
+
+    const hasSearchFailed = text.includes("search failed");
+    const hasRotateDetail = includesAny(text, [
+      "authentication required",
+      "missing or invalid api key",
+      "excessive requests",
+      "rate of requests",
+      "usage limit",
+      "pay-as-you-go",
+      "paygo limit",
+      "paygo",
+    ]);
+
+    return hasRotateDetail || (hasSearchFailed && hasRotateDetail);
   }
 
   private isLinkupExhausted(error: ExhaustionError): boolean {
-    if (error.statusCode === 401 || error.statusCode === 403) return true
-    if (error.code === -32000) {
-      const m = (error.message ?? '').toLowerCase()
-      if (m.includes('api key is required') || m.includes('bearer scheme')) return true
+    const status = getStatusCode(error);
+    const text = getLowerText(error);
+
+    if (status === 402) return false;
+    if (status && [400, 409, 500].includes(status)) return false;
+    if (status === 401 || status === 403) return true;
+
+    if (
+      error.code === -32000 &&
+      includesAny(text, ["api key is required", "bearer scheme"])
+    ) {
+      return true;
     }
-    if (error.isError === true) {
-      const text = (error.mcpResultText ?? '').toLowerCase()
-      return ['unauthorized action', 'insufficient', 'too many requests',
-              'out of credit', 'credit', 'rate limit'].some(p => text.includes(p))
-    }
-    return false
+
+    if (status === 429) return true;
+
+    return includesAny(text, [
+      "unauthorized action",
+      "insufficient_funds_credits",
+      "too_many_requests",
+      "too many requests",
+      "out of credit",
+      "insufficient funds",
+      "rate limit",
+    ]);
   }
 
   private isBrightDataExhausted(error: ExhaustionError): boolean {
-    if (error.statusCode === 401 && !error.body) return false // no auth header = config bug
-    if (error.statusCode === 400) return false // missing session = protocol error
-    
-    const t = error.toolErrorText ?? ''
-    if (t.includes('HTTP 401')) return true // covers: Auth method is not supported, Token expired, Unauthorized
-    if (t.includes('5,000 request monthly limit') || t.includes('monthly limit for Bright Data MCP')) return true
-    if (t.includes('usage limit') || t.includes('Zone has reached usage limit') || t.includes('HTTP 502')) return true
-    if ((t.includes('HTTP 429') || t.includes('rate limit') || t.includes('rate limits')) &&
-        !t.startsWith('Rate limit exceeded:')) return true
-    if (t.includes('HTTP 407') || t.includes('Account is suspended') || t.includes('suspended')) return true
-    if (t.includes('KYC Required') || t.includes('HTTP 402')) return true
-    if (t.includes('HTTP 400') || t.includes('HTTP 403') || t.includes('Forbidden') ||
-        t.includes('Timeout after') || t.includes('No valid session ID')) return false
-    return false
+    const status = getStatusCode(error);
+    const text = getLowerText(error);
+
+    if (
+      error.statusCode === 401 &&
+      !error.body &&
+      !error.mcpResultText &&
+      !error.toolErrorText
+    ) {
+      return false;
+    }
+    if (status === 400 || status === 403) return false;
+    if (
+      includesAny(text, [
+        "no valid session id",
+        "no active session",
+        "http 400",
+        "http 403",
+        "forbidden host",
+        "forbidden: target blocked",
+        "no protocol",
+        "timeout after",
+        "no snapshot id",
+      ]) ||
+      /(?:^|execution failed:\s*)rate limit exceeded:\s*\d+/i.test(text)
+    ) {
+      return false;
+    }
+
+    if (status === 502) {
+      return includesAny(text, [
+        "usage limit",
+        "zone has reached usage limit",
+        "client_10100",
+      ]);
+    }
+    if (status && [401, 402, 407, 429].includes(status)) return true;
+
+    return includesAny(text, [
+      "auth method is not supported",
+      "5,000 request monthly limit",
+      "monthly limit for bright data mcp",
+      "zone has reached usage limit",
+      "client_10100",
+      "client_10110",
+      "policy_20130",
+      "policy_20140",
+      "policy_20220",
+      "policy_20221",
+      "policy_20222",
+      "account is suspended",
+      "kyc required",
+      "suspended",
+    ]);
   }
 
   private isOlostepExhausted(error: ExhaustionError): boolean {
-    if (error.statusCode && [401, 402, 403].includes(error.statusCode)) return true
-    if (error.mcpResultText) {
-      const lower = error.mcpResultText.toLowerCase()
-      if (/olostep api error: 4[012][12]/.test(lower)) return true
-      return ['invalid_api_key', 'invalid api key', 'credits exhausted',
-              'payment required', 'unauthorized'].some(p => lower.includes(p))
+    const status = getStatusCode(error);
+    const text = getLowerText(error);
+
+    if (text.includes("missing authorization: bearer <olostep_api_key>")) {
+      return false;
     }
-    return false
+    if (status && [400, 404, 409, 422, 500, 502, 504].includes(status))
+      return false;
+    if (status && [401, 402, 403].includes(status)) return true;
+    if (/olostep api error:\s*(401|402|403)\b/i.test(text)) return true;
+
+    return includesAny(text, [
+      "invalid_api_key",
+      '"invalid_api_key":true',
+      "your api key is invalid",
+      "credits exhausted",
+      "payment required",
+      "access denied",
+      "feature approval required",
+      "feature not enabled",
+    ]);
   }
 
   private isDappierExhausted(error: ExhaustionError): boolean {
-    const DAPPIER_ROTATE_PATTERNS = [
-      /Error:\s*Failed to retrieve/i, /Error:\s*Unable to (retrieve|fetch|access|process)/i,
-      /Error:\s*Authentication/i, /Error:\s*Unauthorized/i, /Error:\s*Invalid.*key/i,
-      /Error:\s*quota/i, /Error:\s*rate.?limit/i, /Error:\s*credits/i, /Error:\s*billing/i,
-      /Missing authentication/i,
-    ]
-    const DAPPIER_NO_ROTATE_CODES = new Set([-32000, -32001, -32602, -32600, -32601, -32700])
-    
-    if (error.statusCode === 402 || error.statusCode === 401) return true
-    if (error.statusCode === 400 || error.statusCode === 404) return false
-    if (error.code !== undefined && DAPPIER_NO_ROTATE_CODES.has(error.code)) return false
-    
-    const msg = error.message ?? (typeof error.body === 'string' ? error.body : JSON.stringify(error.body ?? ''))
-    return DAPPIER_ROTATE_PATTERNS.some(p => p.test(msg))
+    const status = getStatusCode(error);
+    const text = getCombinedText(error);
+    const lower = text.toLowerCase();
+    const noRotateCodes = new Set([
+      -32000, -32001, -32602, -32600, -32601, -32700,
+    ]);
+
+    if (status === 400 || status === 404) return false;
+    if (error.code !== undefined && noRotateCodes.has(error.code)) return false;
+    if (status === 401 || status === 402) return true;
+
+    const startsWithError = getTextSources(error).some((source) =>
+      /^error:/i.test(source.trim()),
+    );
+    if (startsWithError) return true;
+
+    return (
+      matchesAny(text, [
+        /Error:\s*Failed to retrieve/i,
+        /Error:\s*Unable to (retrieve|fetch|access|process)/i,
+        /Error:\s*Authentication/i,
+        /Error:\s*Unauthorized/i,
+        /Error:\s*Invalid.*key/i,
+        /Error:\s*quota/i,
+        /Error:\s*rate.?limit/i,
+        /Error:\s*credits/i,
+        /Error:\s*billing/i,
+        /Missing authentication/i,
+      ]) || includesAny(lower, ["quota", "rate limit", "credits", "billing"])
+    );
   }
 
   private isParallelExhausted(error: ExhaustionError): boolean {
-    const status = error.statusCode
-    if (status === 401 || status === 402 || status === 429) return true
-    
-    const body = typeof error.body === 'string' ? error.body : JSON.stringify(error.body ?? '')
-    const apigeePatterns = ['oauth.v2.InvalidApiKey', 'steps.oauth.v2.FailedToResolveAPIKey',
-      'oauth.v2.ApiKeyExpired', 'oauth.v2.ApiKeyNotApproved', 'Invalid ApiKey', 'FailedToResolveAPIKey']
-    if (body.includes('"fault"') && apigeePatterns.some(p => body.includes(p))) return true
-    if (body.includes('"code":16') || body.includes('"code": 16')) return true
-    
-    const msg = (error.message ?? body).toLowerCase()
-    return ['invalid api key', 'invalid apikey', 'failed to resolve api key', 'apikey',
-            'rate limit', 'too many requests', 'quota exceeded', 'insufficient credit',
-            'payment required'].some(p => msg.includes(p))
+    const status = getStatusCode(error);
+    const text = getLowerText(error);
+
+    if (
+      status &&
+      [400, 403, 404, 408, 422, 500, 502, 503, 504].includes(status)
+    ) {
+      return false;
+    }
+    if (status && [401, 402, 429].includes(status)) return true;
+
+    const apigeePatterns = [
+      "oauth.v2.invalidapikey",
+      "steps.oauth.v2.failedtoresolveapikey",
+      "oauth.v2.invalidapikeyforgivenresource",
+      "oauth.v2.apikeyexpired",
+      "oauth.v2.apikeynotapproved",
+      "invalid apikey",
+      "failedtoresolveapikey",
+    ];
+
+    if (text.includes('"fault"') && includesAny(text, apigeePatterns))
+      return true;
+    if (text.includes('"code":16') || text.includes('"code": 16')) return true;
+
+    return includesAny(text, [
+      "invalid api key",
+      "invalid apikey",
+      "failed to resolve api key",
+      "invalid api key (c.1)",
+      "rate limit exceeded",
+      "too many requests",
+      "quota exceeded",
+      "insufficient credit",
+      "insufficient credits",
+      "payment required",
+      "account balance depleted",
+    ]);
   }
 
   private isGenericExhausted(error: ExhaustionError): boolean {
-    // 1. Check HTTP status code
-    if (error.statusCode && this.patterns.httpStatusCodes.includes(error.statusCode)) {
-      return true
+    const statusCode = getStatusCode(error);
+    if (statusCode && this.patterns.httpStatusCodes.includes(statusCode)) {
+      return true;
     }
-    
-    // 2. Check JSON-RPC error code
+
     if (error.code && this.patterns.jsonRpcErrorCodes.includes(error.code)) {
-      return true
+      return true;
     }
-    
-    // 3. Check error message patterns
-    if (error.message && this.patterns.messagePatterns.length > 0) {
-      const message = error.message.toLowerCase()
-      for (const pattern of this.patterns.messagePatterns) {
-        if (message.includes(pattern.toLowerCase())) {
-          return true
-        }
-      }
-    }
-    
-    // 4. Check response body (if available)
-    if (error.body && this.patterns.messagePatterns.length > 0) {
-      const body = typeof error.body === 'string' 
-        ? error.body.toLowerCase() 
-        : JSON.stringify(error.body).toLowerCase()
-      
-      for (const pattern of this.patterns.messagePatterns) {
-        if (body.includes(pattern.toLowerCase())) {
-          return true
-        }
-      }
-    }
-    
-    return false
+
+    const text = getLowerText(error);
+    return this.patterns.messagePatterns.some((pattern) =>
+      text.includes(pattern.toLowerCase()),
+    );
   }
 }
 
-/**
- * Extract cooldown duration from error (if provider specifies it)
- */
-export function extractCooldown(error: ExhaustionError, providerName: string, defaultCooldownMs: number): number {
-  const config = (PROVIDER_EXHAUSTION_CONFIG as any)[providerName]
-  
-  // Check for Retry-After header (in seconds)
-  if (config?.hasRetryAfterHeader && error.headers?.['retry-after']) {
-    const retryAfter = parseInt(error.headers['retry-after'], 10)
-    if (!isNaN(retryAfter)) {
-      return retryAfter * 1000 // Convert to ms
+export function extractCooldown(
+  error: ExhaustionError,
+  providerName: string,
+  defaultCooldownMs: number,
+): number {
+  const config = (PROVIDER_EXHAUSTION_CONFIG as any)[providerName];
+  const retryAfter = getHeader(error.headers, "retry-after");
+  if (config?.hasRetryAfterHeader && retryAfter) {
+    const retryAfterSeconds = parseInt(retryAfter, 10);
+    if (!isNaN(retryAfterSeconds)) return retryAfterSeconds * 1000;
+  }
+
+  const text = getLowerText(error);
+  const statusCode = getStatusCode(error);
+
+  if (providerName === "exa") {
+    const resetHeader = getHeader(error.headers, "x-ratelimit-reset");
+    if (resetHeader) {
+      const resetMs = parseInt(resetHeader, 10);
+      if (!isNaN(resetMs)) return Math.max(0, resetMs - Date.now());
     }
   }
-  
-  // Check for X-RateLimit-Reset header (Unix timestamp for Linkup)
-  if (providerName === 'linkup' && error.headers?.['x-ratelimit-reset']) {
-    const resetTime = parseInt(error.headers['x-ratelimit-reset'], 10)
-    if (!isNaN(resetTime)) {
-      const now = Math.floor(Date.now() / 1000)
-      const cooldownSeconds = Math.max(0, resetTime - now)
-      return cooldownSeconds * 1000 // Convert to ms
+
+  if (providerName === "firecrawl") {
+    const embeddedRetry = parseRetryAfterText(text);
+    if (embeddedRetry !== undefined) return embeddedRetry;
+  }
+
+  if (providerName === "linkup") {
+    const resetHeader = getHeader(error.headers, "x-ratelimit-reset");
+    if (resetHeader) {
+      const resetSeconds = parseInt(resetHeader, 10);
+      if (!isNaN(resetSeconds)) return resetSeconds * 1000;
     }
   }
-  
-  // Check for cooldown overrides by HTTP status
-  if (error.statusCode && config?.cooldownOverrides?.[error.statusCode]) {
-    return config.cooldownOverrides[error.statusCode]
+
+  if (providerName === "brightdata") {
+    if (
+      includesAny(text, [
+        "5,000 request monthly limit",
+        "monthly limit for bright data mcp",
+      ])
+    ) {
+      return DAY_MS;
+    }
+    if (includesAny(text, ["zone has reached usage limit", "client_10100"]))
+      return HOUR_MS;
+    if (
+      statusCode === 429 ||
+      includesAny(text, [
+        "client_10110",
+        "policy_20220",
+        "policy_20221",
+        "policy_20222",
+      ])
+    ) {
+      return MINUTE_MS;
+    }
+    if (
+      statusCode === 401 ||
+      includesAny(text, ["auth method is not supported", "kyc required"])
+    ) {
+      return YEAR_MS;
+    }
+    if (includesAny(text, ["account is suspended", "suspended"]))
+      return 30 * MINUTE_MS;
+    if (statusCode === 402 || statusCode === 407) return DAY_MS;
   }
-  
-  return defaultCooldownMs
+
+  if (providerName === "olostep") {
+    if (statusCode === 401) return YEAR_MS;
+    if (statusCode === 402) return DAY_MS;
+    if (statusCode === 403) return HOUR_MS;
+  }
+
+  if (providerName === "dappier") {
+    if (statusCode === 401) return YEAR_MS;
+    if (includesAny(text, ["credits", "billing", "quota"])) return HOUR_MS;
+  }
+
+  if (statusCode && config?.cooldownOverrides?.[statusCode]) {
+    return config.cooldownOverrides[statusCode];
+  }
+
+  return defaultCooldownMs;
 }
