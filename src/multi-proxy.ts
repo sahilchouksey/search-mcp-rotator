@@ -260,7 +260,9 @@ export class MultiProxy {
     const maxAttempts = Math.max(1, state.keyPool.getHealthyCount());
     let lastError: any = null;
 
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const sessionRetryKeys = new Set<string>();
+
+    for (let attempt = 0; attempt < maxAttempts; ) {
       try {
         // First attempt: use existing connection.
         // Retry: rotate to next healthy key.
@@ -285,6 +287,22 @@ export class MultiProxy {
         );
 
         const mcpError = this.extractMcpError(state.name, result);
+        if (
+          mcpError &&
+          this.isInvalidSessionError(mcpError) &&
+          !sessionRetryKeys.has(state.currentKey)
+        ) {
+          sessionRetryKeys.add(state.currentKey);
+          logger.warn(
+            `Upstream session expired for ${state.name}; reconnecting same key`,
+            {
+              currentKey: state.currentKey.slice(0, 8) + "...",
+            },
+          );
+          await this.reconnect(state, state.currentKey);
+          continue;
+        }
+
         if (mcpError && state.detector.isExhausted(mcpError)) {
           const cooldown = extractCooldown(
             mcpError,
@@ -293,12 +311,28 @@ export class MultiProxy {
           );
           state.keyPool.markDegraded(state.currentKey, cooldown);
           lastError = mcpError;
+          attempt++;
           continue;
         }
 
         state.keyPool.markSuccess(state.currentKey);
         return result as CallToolResult;
       } catch (err: any) {
+        if (
+          this.isInvalidSessionError(err) &&
+          !sessionRetryKeys.has(state.currentKey)
+        ) {
+          sessionRetryKeys.add(state.currentKey);
+          logger.warn(
+            `Upstream session expired for ${state.name}; reconnecting same key`,
+            {
+              currentKey: state.currentKey.slice(0, 8) + "...",
+            },
+          );
+          await this.reconnect(state, state.currentKey);
+          continue;
+        }
+
         const exhaustionError: ExhaustionError = {
           statusCode: err.statusCode ?? err.status,
           code: err.code,
@@ -315,6 +349,7 @@ export class MultiProxy {
           );
           state.keyPool.markDegraded(state.currentKey, cooldown);
           lastError = err;
+          attempt++;
           continue;
         }
 
@@ -324,6 +359,27 @@ export class MultiProxy {
 
     throw new Error(
       `All keys for ${state.name} exhausted. Last error: ${lastError?.message ?? "unknown"}`,
+    );
+  }
+
+  private isInvalidSessionError(error: any): boolean {
+    const text = [
+      error?.message,
+      error?.mcpResultText,
+      error?.toolErrorText,
+      typeof error?.body === "string"
+        ? error.body
+        : JSON.stringify(error?.body ?? ""),
+      String(error),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return (
+      text.includes("no valid session id") ||
+      text.includes("mcp-session-id header is required") ||
+      text.includes("session not found")
     );
   }
 

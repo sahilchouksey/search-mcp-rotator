@@ -189,7 +189,9 @@ export class MCPProxy {
     const maxAttempts = Math.max(1, this.keyPool.getHealthyCount());
     let lastError: any = null;
 
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const sessionRetryKeys = new Set<string>();
+
+    for (let attempt = 0; attempt < maxAttempts; ) {
       try {
         // Get key for this attempt
         if (attempt > 0) {
@@ -218,10 +220,25 @@ export class MCPProxy {
 
         // CHECK: Does the result look like an exhaustion error hidden inside HTTP 200?
         const mcpError = this.extractMcpLevelError(result);
+        if (
+          mcpError &&
+          this.isInvalidSessionError(mcpError) &&
+          !sessionRetryKeys.has(this.currentKey)
+        ) {
+          sessionRetryKeys.add(this.currentKey);
+          logger.warn(
+            `Upstream session expired for ${this.providerName}; reconnecting same key`,
+            { currentKey: this.maskKey(this.currentKey) },
+          );
+          await this.connectUpstream(this.currentKey);
+          continue;
+        }
+
         if (mcpError && this.detector.isExhausted(mcpError)) {
           const cooldown = this.extractCooldownFromResult(result, mcpError);
           this.keyPool.markDegraded(this.currentKey, cooldown);
           lastError = mcpError;
+          attempt++;
           continue; // retry with next key
         }
 
@@ -229,6 +246,19 @@ export class MCPProxy {
         this.keyPool.markSuccess(this.currentKey);
         return result as CallToolResult;
       } catch (err: any) {
+        if (
+          this.isInvalidSessionError(err) &&
+          !sessionRetryKeys.has(this.currentKey)
+        ) {
+          sessionRetryKeys.add(this.currentKey);
+          logger.warn(
+            `Upstream session expired for ${this.providerName}; reconnecting same key`,
+            { currentKey: this.maskKey(this.currentKey) },
+          );
+          await this.connectUpstream(this.currentKey);
+          continue;
+        }
+
         // HTTP-level or MCP transport error
         const exhaustionError: ExhaustionError = {
           statusCode: err.statusCode ?? err.status,
@@ -246,6 +276,7 @@ export class MCPProxy {
           );
           this.keyPool.markDegraded(this.currentKey, cooldown);
           lastError = err;
+          attempt++;
           // reconnect with next key on next iteration
           continue;
         }
@@ -260,6 +291,27 @@ export class MCPProxy {
       `All API keys for ${this.providerName} are exhausted or degraded. ` +
         `Last error: ${lastError?.message ?? "unknown"}. ` +
         `Please add more keys or wait for cooldown.`,
+    );
+  }
+
+  private isInvalidSessionError(error: any): boolean {
+    const text = [
+      error?.message,
+      error?.mcpResultText,
+      error?.toolErrorText,
+      typeof error?.body === "string"
+        ? error.body
+        : JSON.stringify(error?.body ?? ""),
+      String(error),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return (
+      text.includes("no valid session id") ||
+      text.includes("mcp-session-id header is required") ||
+      text.includes("session not found")
     );
   }
 
