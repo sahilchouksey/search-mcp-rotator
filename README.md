@@ -33,7 +33,7 @@ One entry covers all your configured providers.
   "mcp": {
     "search": {
       "type": "local",
-      "command": ["npx", "-y", "search-mcp-rotator"],
+      "command": ["npx", "-y", "search-mcp-rotator@latest"],
       "enabled": true,
       "timeout": 30000
     }
@@ -48,7 +48,7 @@ One entry covers all your configured providers.
   "mcpServers": {
     "search": {
       "command": "npx",
-      "args": ["-y", "search-mcp-rotator"],
+      "args": ["-y", "search-mcp-rotator@latest"],
       "lifecycle": "lazy"
     }
   }
