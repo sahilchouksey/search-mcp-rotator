@@ -15,6 +15,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
+    "generate:tools": "npm run build && node scripts/generate-tool-registry.mjs",
+    "check:tools": "npm run build && node scripts/generate-tool-registry.mjs --check",
     "test": "npm run build && node scripts/test-detector.mjs",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build"

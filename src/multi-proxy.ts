@@ -17,6 +17,11 @@ import { KeyPool } from "./key-pool.js";
 import { ExhaustionDetector, extractCooldown } from "./detector.js";
 import { AuthInjector } from "./auth-injector.js";
 import { logger } from "./logger.js";
+import {
+  exposeProviderTools,
+  getStaticProviderTools,
+  unprefixToolName,
+} from "./tool-registry.js";
 
 // ── Per-provider state ────────────────────────────────────────────────────────
 interface ProviderState {
@@ -32,24 +37,6 @@ interface ProviderState {
   connected: boolean;
   connectionPromise: Promise<void> | null;
   callLock: Promise<void>;
-}
-
-// ── Tool name helpers ─────────────────────────────────────────────────────────
-// Prefix: "{provider}__{toolname}" — double underscore as separator
-// All provider IDs are single words without underscores, making parsing unambiguous.
-function prefixTool(provider: string, toolName: string): string {
-  return `${provider}__${toolName}`;
-}
-
-function unprefix(
-  prefixedName: string,
-): { provider: string; toolName: string } | null {
-  const idx = prefixedName.indexOf("__");
-  if (idx === -1) return null;
-  return {
-    provider: prefixedName.slice(0, idx),
-    toolName: prefixedName.slice(idx + 2),
-  };
 }
 
 // ── MultiProxy ────────────────────────────────────────────────────────────────
@@ -77,7 +64,7 @@ export class MultiProxy {
         ),
         transport: null,
         currentKey: "",
-        tools: [],
+        tools: getStaticProviderTools(name),
         connected: false,
         connectionPromise: null,
         callLock: Promise.resolve(),
@@ -116,14 +103,7 @@ export class MultiProxy {
         await state.client.connect(state.transport);
         state.connected = true;
 
-        // Always fetch fresh tools from upstream — no disk cache. Providers can
-        // change/add/remove tools at any time; a stale cache would expose
-        // wrong schemas and missing tools to the LLM client.
-        const { tools } = await state.client.listTools();
-        state.tools = tools;
-
         logger.info(`Connected to upstream for ${state.name}`, {
-          toolCount: tools.length,
           currentKey: state.currentKey.slice(0, 8) + "...",
         });
       } finally {
@@ -132,6 +112,16 @@ export class MultiProxy {
     })();
 
     return state.connectionPromise;
+  }
+
+  private async discoverTools(state: ProviderState): Promise<void> {
+    await this.ensureConnected(state);
+    const { tools } = await state.client.listTools();
+    state.tools = tools;
+    logger.info(`Discovered upstream tools for ${state.name}`, {
+      toolCount: tools.length,
+      currentKey: state.currentKey.slice(0, 8) + "...",
+    });
   }
 
   // ── Reconnect with a different key ───────────────────────────────────────
@@ -156,36 +146,18 @@ export class MultiProxy {
     state.currentKey = key;
   }
 
-  // ── Inject strategy param into tool schema ───────────────────────────────
-  private injectStrategyParam(schema: any): any {
-    return {
-      ...schema,
-      properties: {
-        ...schema.properties,
-        strategy: {
-          type: "string",
-          enum: ["round-robin", "priority", "random"],
-          description:
-            "Key rotation strategy for this call. Overrides provider default.",
-        },
-      },
-    };
-  }
-
   // ── Register MCP handlers ────────────────────────────────────────────────
   private registerHandlers(): void {
-    // tools/list — fetch fresh from all providers in parallel.
-    // Tools are kept in memory for the lifetime of this process (per-call
-    // refresh would be wasteful), but NEVER persisted to disk so we always
-    // pick up upstream tool changes on next process start.
+    // tools/list — return static/generated schemas immediately. If a provider
+    // is missing from the bundled registry, fall back to live discovery for it.
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      // Connect all providers that haven't been connected yet — in parallel.
+      // Live-discover only providers that do not have static/generated tools.
       await Promise.allSettled(
         [...this.providers.entries()]
           .filter(([, state]) => state.tools.length === 0)
           .map(async ([name, state]) => {
             try {
-              await this.ensureConnected(state);
+              await this.discoverTools(state);
             } catch (e) {
               logger.warn(
                 `Could not fetch tools for ${name}: ${(e as Error).message}`,
@@ -196,13 +168,7 @@ export class MultiProxy {
 
       const allTools: Tool[] = [];
       for (const [name, state] of this.providers) {
-        for (const tool of state.tools) {
-          allTools.push({
-            ...tool,
-            name: prefixTool(name, tool.name),
-            inputSchema: this.injectStrategyParam(tool.inputSchema),
-          });
-        }
+        allTools.push(...exposeProviderTools(name, state.tools));
       }
 
       return { tools: allTools };
@@ -211,7 +177,7 @@ export class MultiProxy {
     // tools/call — route to correct provider with key rotation
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const prefixedName = request.params.name;
-      const parsed = unprefix(prefixedName);
+      const parsed = unprefixToolName(prefixedName);
 
       if (!parsed) throw new Error(`Unknown tool: ${prefixedName}`);
 

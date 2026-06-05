@@ -35,7 +35,7 @@ One entry covers all your configured providers.
       "type": "local",
       "command": ["npx", "-y", "search-mcp-rotator"],
       "enabled": true,
-      "timeout": 60000
+      "timeout": 30000
     }
   }
 }
@@ -63,16 +63,16 @@ One entry covers all your configured providers.
 
 ## Supported Providers
 
-| Provider | Auth Pattern | Specialty |
-|----------|--------------|-----------|
-| **Exa** | Bearer header | Neural/semantic web search, code search |
-| **Firecrawl** | Bearer header | Web scraping, deep crawl, structured extraction |
-| **Linkup** | Bearer header | Real-time web search, source-cited answers |
-| **Bright Data** | Bearer header | 40+ scraping tools, Google SERP |
-| **Olostep** | Bearer header | Search + extract + AI answers with citations |
-| **Tavily** | Query param | Real-time web search, extract, map, crawl |
-| **Dappier** | Query param | Real-time news, finance, sports, weather |
-| **Parallel** | Custom header | Highest-accuracy general web search |
+| Provider        | Auth Pattern  | Specialty                                       |
+| --------------- | ------------- | ----------------------------------------------- |
+| **Exa**         | Bearer header | Neural/semantic web search, code search         |
+| **Firecrawl**   | Bearer header | Web scraping, deep crawl, structured extraction |
+| **Linkup**      | Bearer header | Real-time web search, source-cited answers      |
+| **Bright Data** | Bearer header | 40+ scraping tools, Google SERP                 |
+| **Olostep**     | Bearer header | Search + extract + AI answers with citations    |
+| **Tavily**      | Query param   | Real-time web search, extract, map, crawl       |
+| **Dappier**     | Query param   | Real-time news, finance, sports, weather        |
+| **Parallel**    | Custom header | Highest-accuracy general web search             |
 
 ---
 
@@ -124,11 +124,11 @@ export FIRECRAWL_KEYS="key1,key2"
 
 Every tool call accepts an optional `strategy` parameter:
 
-| Strategy | Behavior |
-|----------|----------|
-| `round-robin` (default) | Distribute requests evenly across keys |
-| `priority` | Always use first healthy key, fallback to others |
-| `random` | Random key selection |
+| Strategy                | Behavior                                         |
+| ----------------------- | ------------------------------------------------ |
+| `round-robin` (default) | Distribute requests evenly across keys           |
+| `priority`              | Always use first healthy key, fallback to others |
+| `random`                | Random key selection                             |
 
 ---
 
@@ -168,6 +168,24 @@ npm run build
 npm run dev -- --provider=exa   # watch mode
 npm run typecheck
 ```
+
+### Static Tool Registry
+
+The package ships a generated snapshot of upstream MCP tool schemas so client `tools/list` can return immediately without connecting to every provider on startup. Tool execution still connects to the live upstream provider and uses the normal key rotation/retry logic.
+
+Regenerate the registry from your configured providers:
+
+```bash
+npm run generate:tools
+```
+
+Check whether live provider schemas drifted from the committed snapshot:
+
+```bash
+npm run check:tools
+```
+
+Run `generate:tools`, review the diff, then rebuild before publishing when providers add, remove, or change tools.
 
 ---
 

@@ -17,6 +17,10 @@ import { KeyPool } from "./key-pool.js";
 import { ExhaustionDetector, extractCooldown } from "./detector.js";
 import { AuthInjector } from "./auth-injector.js";
 import { logger } from "./logger.js";
+import {
+  getStaticProviderTools,
+  injectStrategyParam,
+} from "./tool-registry.js";
 
 // Probe upstream providers in parallel and report tool counts.
 // No disk caching — providers may change tools at any time, so we always
@@ -74,6 +78,7 @@ export class MCPProxy {
       { name: `${providerName}-rotator`, version: "1.0.0" },
       { capabilities: { tools: {} } },
     );
+    this.tools = getStaticProviderTools(providerName);
     this.upstreamClient = new Client(
       { name: `${providerName}-rotator-client`, version: "1.0.0" },
       { capabilities: {} },
@@ -120,24 +125,22 @@ export class MCPProxy {
     if (this.upstreamTransport) return;
     this.currentKey = this.keyPool.next();
     await this.connectUpstream(this.currentKey);
-    // Always fetch fresh tools from upstream — no disk cache. Providers can
-    // change/add/remove tools at any time.
-    this.tools = await this.discoverTools();
     logger.info(`Connected to upstream for ${this.providerName}`, {
-      toolCount: this.tools.length,
       currentKey: this.maskKey(this.currentKey),
     });
   }
 
   private registerHandlers(): void {
-    // tools/list — fetch fresh from upstream. In-memory only, not persisted.
+    // tools/list — return static/generated schemas immediately. If this
+    // provider is missing from the bundled registry, fall back to live discovery.
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       if (this.tools.length === 0) {
         await this.ensureConnected();
+        this.tools = await this.discoverTools();
       }
       const toolsWithStrategy = this.tools.map((tool) => ({
         ...tool,
-        inputSchema: this.injectStrategyParam(tool.inputSchema),
+        inputSchema: injectStrategyParam(tool.inputSchema),
       }));
       return { tools: toolsWithStrategy };
     });
@@ -146,23 +149,6 @@ export class MCPProxy {
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return this.handleToolCall(request);
     });
-  }
-
-  private injectStrategyParam(schema: any): any {
-    // Add optional 'strategy' enum param to every tool's input schema
-    return {
-      ...schema,
-      properties: {
-        ...schema.properties,
-        strategy: {
-          type: "string",
-          enum: ["round-robin", "priority", "random"],
-          description:
-            "Key rotation strategy for this call. Overrides provider default.",
-        },
-      },
-      // strategy is NOT required
-    };
   }
 
   private async handleToolCall(request: any): Promise<CallToolResult> {
