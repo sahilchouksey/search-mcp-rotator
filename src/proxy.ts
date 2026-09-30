@@ -21,6 +21,12 @@ import {
   getStaticProviderTools,
   injectStrategyParam,
 } from "./tool-registry.js";
+import { createToolCache, type ToolCache } from "./tool-cache.js";
+import {
+  DISCOVERY_GRACE_MS,
+  DISCOVERY_TIMEOUT_MS,
+  TOOL_CACHE_TTL_MS,
+} from "./constants.js";
 
 // Probe upstream providers in parallel and report tool counts.
 // No disk caching — providers may change tools at any time, so we always
@@ -66,6 +72,8 @@ export class MCPProxy {
   private upstreamTransport: StreamableHTTPClientTransport | null = null;
   private currentKey: string = "";
   private tools: Tool[] = [];
+  private cache: ToolCache;
+  private readonly discoveryTimeoutMs: number;
 
   constructor(
     private readonly providerName: string,
@@ -73,11 +81,15 @@ export class MCPProxy {
     private readonly keyPool: KeyPool,
     private readonly detector: ExhaustionDetector,
     private readonly authInjector: AuthInjector,
+    opts?: { discoveryTimeoutMs?: number; toolCacheTtlMs?: number },
   ) {
     this.server = new Server(
       { name: `${providerName}-rotator`, version: "1.0.0" },
       { capabilities: { tools: {} } },
     );
+    this.discoveryTimeoutMs =
+      opts?.discoveryTimeoutMs ?? DISCOVERY_TIMEOUT_MS;
+    this.cache = createToolCache(opts?.toolCacheTtlMs ?? TOOL_CACHE_TTL_MS);
     this.tools = getStaticProviderTools(providerName);
     this.upstreamClient = new Client(
       { name: `${providerName}-rotator-client`, version: "1.0.0" },
@@ -107,7 +119,9 @@ export class MCPProxy {
     this.upstreamTransport = new StreamableHTTPClientTransport(new URL(url), {
       requestInit: { headers },
     });
-    await this.upstreamClient.connect(this.upstreamTransport);
+    await this.upstreamClient.connect(this.upstreamTransport, {
+      timeout: this.discoveryTimeoutMs,
+    });
     this.currentKey = key;
 
     logger.debug(`Connected to upstream with key: ${this.maskKey(key)}`, {
@@ -116,9 +130,55 @@ export class MCPProxy {
   }
 
   private async discoverTools(): Promise<Tool[]> {
-    const result = await this.upstreamClient.listTools();
+    const result = await this.upstreamClient.listTools(undefined, {
+      timeout: this.discoveryTimeoutMs,
+    });
     logger.debug(`Discovered ${result.tools.length} tools from upstream`);
+    // Fire-and-forget disk cache persist; never blocks the caller.
+    this.cache.write(this.providerName, result.tools);
     return result.tools;
+  }
+
+  /** Best-effort tools/list_changed notification; never throws. */
+  private notifyToolsChanged(): void {
+    try {
+      const p = this.server.sendToolListChanged();
+      if (p && typeof (p as Promise<void>).catch === "function") {
+        (p as Promise<void>).catch((e) =>
+          logger.debug(
+            `sendToolListChanged failed for ${this.providerName}`,
+            { error: (e as Error)?.message ?? String(e) },
+          ),
+        );
+      }
+    } catch (e) {
+      logger.debug(`sendToolListChanged threw for ${this.providerName}`, {
+        error: (e as Error)?.message ?? String(e),
+      });
+    }
+  }
+
+  /**
+   * Non-blocking background warmup: live-discover when the static registry
+   * has no tools for this provider. Errors are logged; never propagate.
+   * Callers must NOT await this on the startup path.
+   */
+  async warmup(): Promise<void> {
+    if (this.tools.length > 0) return;
+    try {
+      const hit = this.cache.read(this.providerName);
+      if (hit) {
+        this.tools = hit.tools;
+        return;
+      }
+      await this.ensureConnected();
+      this.tools = await this.discoverTools();
+      this.notifyToolsChanged();
+    } catch (e) {
+      logger.warn(`Warmup discovery failed for ${this.providerName}`, {
+        error: (e as Error)?.message ?? String(e),
+      });
+    }
   }
 
   private async ensureConnected(): Promise<void> {
@@ -132,11 +192,67 @@ export class MCPProxy {
 
   private registerHandlers(): void {
     // tools/list — return static/generated schemas immediately. If this
-    // provider is missing from the bundled registry, fall back to live discovery.
+    // provider is missing from the bundled registry, try the disk cache,
+    // then bounded live discovery. A slow upstream finishes in the background
+    // and triggers a tools/list_changed notification.
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       if (this.tools.length === 0) {
-        await this.ensureConnected();
-        this.tools = await this.discoverTools();
+        const hit = this.cache.read(this.providerName);
+        if (hit) {
+          this.tools = hit.tools;
+          logger.info(`Using cached tools for ${this.providerName}`, {
+            toolCount: hit.tools.length,
+            ageMs: Date.now() - hit.fetchedAt,
+          });
+          if (this.cache.needsRefresh(this.providerName)) {
+            void this.ensureConnected()
+              .then(() => this.discoverTools())
+              .then((tools) => {
+                this.tools = tools;
+                this.notifyToolsChanged();
+              })
+              .catch(() => {});
+          }
+        }
+      }
+      if (this.tools.length === 0) {
+        const pending = this.ensureConnected().then(() =>
+          this.discoverTools(),
+        );
+        const settled = await Promise.race([
+          pending.then(
+            () => true as const,
+            () => true as const,
+          ),
+          new Promise(
+            (resolve) =>
+              setTimeout(
+                () => resolve(false as const),
+                this.discoveryTimeoutMs + DISCOVERY_GRACE_MS,
+              ),
+          ),
+        ]);
+        if (settled) {
+          try {
+            this.tools = await pending;
+          } catch (e) {
+            logger.warn(
+              `Could not fetch tools for ${this.providerName}: ${(e as Error)?.message ?? String(e)}`,
+            );
+          }
+        } else {
+          // Timed out: respond with what we have; finish in background.
+          void pending
+            .then((tools) => {
+              this.tools = tools;
+              this.notifyToolsChanged();
+            })
+            .catch((e) =>
+              logger.warn(
+                `Could not fetch tools for ${this.providerName}: ${(e as Error)?.message ?? String(e)}`,
+              ),
+            );
+        }
       }
       const toolsWithStrategy = this.tools.map((tool) => ({
         ...tool,

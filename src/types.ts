@@ -30,6 +30,8 @@ export interface ProviderConfig {
 export interface Config {
   logLevel: LogLevel
   providers: Record<string, ProviderConfig>
+  discoveryTimeoutMs?: number
+  toolCacheTtlMs?: number
 }
 
 export interface KeyPoolStatus {

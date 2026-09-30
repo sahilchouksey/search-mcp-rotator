@@ -37,7 +37,9 @@ const ProviderConfigSchema = z.object({
 
 const ConfigSchema = z.object({
   logLevel: LogLevelSchema.default('info'),
-  providers: z.record(ProviderConfigSchema)
+  providers: z.record(ProviderConfigSchema),
+  discoveryTimeoutMs: z.number().positive().optional(),
+  toolCacheTtlMs: z.number().positive().optional()
 })
 
 export async function loadConfig(filePath: string): Promise<Config> {

@@ -22,6 +22,12 @@ import {
   getStaticProviderTools,
   unprefixToolName,
 } from "./tool-registry.js";
+import { createToolCache, type ToolCache } from "./tool-cache.js";
+import {
+  DISCOVERY_GRACE_MS,
+  DISCOVERY_TIMEOUT_MS,
+  TOOL_CACHE_TTL_MS,
+} from "./constants.js";
 
 // ── Per-provider state ────────────────────────────────────────────────────────
 interface ProviderState {
@@ -43,12 +49,20 @@ interface ProviderState {
 export class MultiProxy {
   private server: Server;
   private providers: Map<string, ProviderState> = new Map();
+  private cache: ToolCache;
+  private readonly discoveryTimeoutMs: number;
 
-  constructor(configs: Record<string, ProviderConfig>) {
+  constructor(
+    configs: Record<string, ProviderConfig>,
+    opts?: { discoveryTimeoutMs?: number; toolCacheTtlMs?: number },
+  ) {
     this.server = new Server(
       { name: "search-mcp-rotator", version: "1.0.0" },
       { capabilities: { tools: {} } },
     );
+    this.discoveryTimeoutMs =
+      opts?.discoveryTimeoutMs ?? DISCOVERY_TIMEOUT_MS;
+    this.cache = createToolCache(opts?.toolCacheTtlMs ?? TOOL_CACHE_TTL_MS);
 
     for (const [name, config] of Object.entries(configs)) {
       if (!config.enabled) continue;
@@ -100,7 +114,9 @@ export class MultiProxy {
         state.transport = new StreamableHTTPClientTransport(new URL(url), {
           requestInit: { headers },
         });
-        await state.client.connect(state.transport);
+        await state.client.connect(state.transport, {
+          timeout: this.discoveryTimeoutMs,
+        });
         state.connected = true;
 
         logger.info(`Connected to upstream for ${state.name}`, {
@@ -116,12 +132,55 @@ export class MultiProxy {
 
   private async discoverTools(state: ProviderState): Promise<void> {
     await this.ensureConnected(state);
-    const { tools } = await state.client.listTools();
+    const { tools } = await state.client.listTools(undefined, {
+      timeout: this.discoveryTimeoutMs,
+    });
     state.tools = tools;
+    // Fire-and-forget disk cache persist; never blocks the caller.
+    this.cache.write(state.name, tools);
     logger.info(`Discovered upstream tools for ${state.name}`, {
       toolCount: tools.length,
       currentKey: state.currentKey.slice(0, 8) + "...",
     });
+  }
+
+  /** Best-effort tools/list_changed notification; never throws. */
+  private notifyToolsChanged(provider: string): void {
+    try {
+      const p = this.server.sendToolListChanged();
+      if (p && typeof (p as Promise<void>).catch === "function") {
+        (p as Promise<void>).catch((e) =>
+          logger.debug(`sendToolListChanged failed for ${provider}`, {
+            error: (e as Error)?.message ?? String(e),
+          }),
+        );
+      }
+    } catch (e) {
+      logger.debug(`sendToolListChanged threw for ${provider}`, {
+        error: (e as Error)?.message ?? String(e),
+      });
+    }
+  }
+
+  /**
+   * Non-blocking background warmup: live-discover registry-miss providers and
+   * refresh the disk cache. Errors are logged; they never propagate.
+   * Callers must NOT await this on the startup path.
+   */
+  async warmup(): Promise<void> {
+    const jobs = [...this.providers.entries()]
+      .filter(([, state]) => state.tools.length === 0)
+      .map(async ([name, state]) => {
+        try {
+          await this.discoverTools(state);
+          this.notifyToolsChanged(name);
+        } catch (e) {
+          logger.warn(`Warmup discovery failed for ${name}`, {
+            error: (e as Error)?.message ?? String(e),
+          });
+        }
+      });
+    await Promise.allSettled(jobs);
   }
 
   // ── Reconnect with a different key ───────────────────────────────────────
@@ -148,23 +207,79 @@ export class MultiProxy {
 
   // ── Register MCP handlers ────────────────────────────────────────────────
   private registerHandlers(): void {
-    // tools/list — return static/generated schemas immediately. If a provider
-    // is missing from the bundled registry, fall back to live discovery for it.
+    // tools/list — return static/generated schemas immediately. Providers
+    // missing from the bundled registry fall back to cache, then to bounded
+    // live discovery. Slow providers finish in the background and trigger a
+    // tools/list_changed notification so the client can re-fetch.
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      // Live-discover only providers that do not have static/generated tools.
-      await Promise.allSettled(
-        [...this.providers.entries()]
-          .filter(([, state]) => state.tools.length === 0)
-          .map(async ([name, state]) => {
-            try {
-              await this.discoverTools(state);
-            } catch (e) {
-              logger.warn(
-                `Could not fetch tools for ${name}: ${(e as Error).message}`,
-              );
-            }
-          }),
+      // 1. Synchronous disk-cache fill for registry-miss providers (no I/O wait).
+      for (const [name, state] of this.providers) {
+        if (state.tools.length > 0) continue;
+        const hit = this.cache.read(name);
+        if (hit) {
+          state.tools = hit.tools;
+          logger.info(`Using cached tools for ${name}`, {
+            toolCount: hit.tools.length,
+            ageMs: Date.now() - hit.fetchedAt,
+          });
+          if (this.cache.needsRefresh(name)) {
+            void this.discoverTools(state)
+              .then(() => this.notifyToolsChanged(name))
+              .catch(() => {});
+          }
+        }
+      }
+
+      // 2. Bounded live discovery for providers still without tools.
+      const missing = [...this.providers.entries()].filter(
+        ([, state]) => state.tools.length === 0,
       );
+      const inFlight = missing.map(([name, state]) =>
+        this.discoverTools(state).then(
+          () => ({ name, ok: true as const }),
+          (error: unknown) => ({ name, ok: false as const, error }),
+        ),
+      );
+      // Never block the response longer than timeout + grace.
+      // Each waiter resolves on EITHER discovery completion or the budget
+      // expiring — the timeout must settle the waiter itself, not just win
+      // a discarded race.
+      const budget = this.discoveryTimeoutMs + DISCOVERY_GRACE_MS;
+      await Promise.allSettled(
+        inFlight.map(
+          (p) =>
+            new Promise<null>((resolve) => {
+              p.then(
+                () => resolve(null),
+                () => resolve(null),
+              );
+              setTimeout(() => resolve(null), budget);
+            }),
+        ),
+      );
+
+      // 3. Late finishers: on success the state is already updated by
+      // discoverTools — just notify the client so it re-fetches.
+      const emptyAtRespond = new Set(
+        missing
+          .filter(([, state]) => state.tools.length === 0)
+          .map(([name]) => name),
+      );
+      missing.forEach(([name], i) => {
+        if (!emptyAtRespond.has(name)) return;
+        void inFlight[i].then((result) => {
+          if (!result.ok) {
+            logger.warn(
+              `Could not fetch tools for ${result.name}: ${(result.error as Error)?.message ?? String(result.error)}`,
+            );
+            return;
+          }
+          const current = this.providers.get(name);
+          if (current && current.tools.length > 0) {
+            this.notifyToolsChanged(name);
+          }
+        });
+      });
 
       const allTools: Tool[] = [];
       for (const [name, state] of this.providers) {
