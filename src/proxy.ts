@@ -152,8 +152,6 @@ export class MCPProxy {
   }
 
   private async handleToolCall(request: any): Promise<CallToolResult> {
-    await this.ensureConnected();
-
     // Check if all keys are degraded early
     if (this.keyPool.allDegraded()) {
       throw new Error(
@@ -176,14 +174,19 @@ export class MCPProxy {
     let lastError: any = null;
 
     const sessionRetryKeys = new Set<string>();
+    const transportRetryKeys = new Set<string>();
 
     for (let attempt = 0; attempt < maxAttempts; ) {
+      let attemptedKey = this.currentKey;
+      let callStarted = false;
+
       try {
         // Get key for this attempt
         if (attempt > 0) {
           // Rotate to next key
           const nextKey = this.keyPool.next(strategyOverride);
           if (!nextKey || nextKey === this.currentKey) break;
+          attemptedKey = nextKey;
           logger.info(`Retrying ${this.providerName} with next key`, {
             attempt: attempt + 1,
             currentKey: this.maskKey(this.currentKey),
@@ -193,11 +196,15 @@ export class MCPProxy {
         } else {
           // First attempt: use current key or get new one with strategy
           const key = this.keyPool.next(strategyOverride);
+          attemptedKey = key;
           if (key !== this.currentKey) {
+            await this.connectUpstream(key);
+          } else if (!this.upstreamTransport) {
             await this.connectUpstream(key);
           }
         }
 
+        callStarted = true;
         const result = await this.upstreamClient.callTool(
           cleanRequest.params,
           undefined,
@@ -208,7 +215,7 @@ export class MCPProxy {
         const mcpError = this.extractMcpLevelError(result);
         if (
           mcpError &&
-          this.isInvalidSessionError(mcpError) &&
+          this.isReconnectSameKeyError(mcpError) &&
           !sessionRetryKeys.has(this.currentKey)
         ) {
           sessionRetryKeys.add(this.currentKey);
@@ -232,16 +239,86 @@ export class MCPProxy {
         this.keyPool.markSuccess(this.currentKey);
         return result as CallToolResult;
       } catch (err: any) {
+        if (!callStarted && this.isTransientTransportError(err)) {
+          logger.warn(
+            `Upstream connect failed for ${this.providerName}; rotating key`,
+            {
+              attemptedKey: this.maskKey(attemptedKey),
+              error: err?.message ?? String(err),
+            },
+          );
+          this.keyPool.markDegraded(attemptedKey, Math.min(this.config.cooldownMs, 60_000));
+          lastError = err;
+          attempt++;
+          continue;
+        }
+
         if (
-          this.isInvalidSessionError(err) &&
-          !sessionRetryKeys.has(this.currentKey)
+          this.isReconnectSameKeyError(err) &&
+          !sessionRetryKeys.has(attemptedKey)
         ) {
-          sessionRetryKeys.add(this.currentKey);
+          sessionRetryKeys.add(attemptedKey);
           logger.warn(
             `Upstream session expired for ${this.providerName}; reconnecting same key`,
-            { currentKey: this.maskKey(this.currentKey) },
+            { currentKey: this.maskKey(attemptedKey) },
           );
-          await this.connectUpstream(this.currentKey);
+          try {
+            await this.connectUpstream(attemptedKey);
+          } catch (reconnectError: any) {
+            logger.warn(
+              `Same-key reconnect failed for ${this.providerName}; rotating key`,
+              {
+                currentKey: this.maskKey(attemptedKey),
+                error: reconnectError?.message ?? String(reconnectError),
+              },
+            );
+            this.keyPool.markDegraded(attemptedKey, Math.min(this.config.cooldownMs, 60_000));
+            lastError = reconnectError;
+            attempt++;
+          }
+          continue;
+        }
+
+        if (
+          this.isTransientTransportError(err) &&
+          !transportRetryKeys.has(attemptedKey)
+        ) {
+          transportRetryKeys.add(attemptedKey);
+          logger.warn(
+            `Upstream transport failed for ${this.providerName}; reconnecting same key`,
+            {
+              currentKey: this.maskKey(attemptedKey),
+              error: err?.message ?? String(err),
+            },
+          );
+          try {
+            await this.connectUpstream(attemptedKey);
+          } catch (reconnectError: any) {
+            logger.warn(
+              `Same-key reconnect failed for ${this.providerName}; rotating key`,
+              {
+                currentKey: this.maskKey(attemptedKey),
+                error: reconnectError?.message ?? String(reconnectError),
+              },
+            );
+            this.keyPool.markDegraded(attemptedKey, Math.min(this.config.cooldownMs, 60_000));
+            lastError = reconnectError;
+            attempt++;
+          }
+          continue;
+        }
+
+        if (this.isTransientTransportError(err)) {
+          logger.warn(
+            `Repeated upstream transport failure for ${this.providerName}; rotating key`,
+            {
+              currentKey: this.maskKey(attemptedKey),
+              error: err?.message ?? String(err),
+            },
+          );
+          this.keyPool.markDegraded(attemptedKey, Math.min(this.config.cooldownMs, 60_000));
+          lastError = err;
+          attempt++;
           continue;
         }
 
@@ -258,9 +335,9 @@ export class MCPProxy {
           const cooldown = extractCooldown(
             exhaustionError,
             this.providerName,
-            this.config.cooldownMs,
+          this.config.cooldownMs,
           );
-          this.keyPool.markDegraded(this.currentKey, cooldown);
+          this.keyPool.markDegraded(attemptedKey, cooldown);
           lastError = err;
           attempt++;
           // reconnect with next key on next iteration
@@ -280,7 +357,29 @@ export class MCPProxy {
     );
   }
 
-  private isInvalidSessionError(error: any): boolean {
+  private isReconnectSameKeyError(error: any): boolean {
+    const text = this.errorText(error);
+
+    return (
+      text.includes("no valid session id") ||
+      text.includes("mcp-session-id header is required") ||
+      text.includes("session not found")
+    );
+  }
+
+  private isTransientTransportError(error: any): boolean {
+    const text = this.errorText(error);
+
+    return (
+      text.includes("fetch failed") ||
+      text.includes("networkerror") ||
+      text.includes("econnreset") ||
+      text.includes("etimedout") ||
+      text.includes("socket hang up")
+    );
+  }
+
+  private errorText(error: any): string {
     const text = [
       error?.message,
       error?.mcpResultText,
@@ -294,11 +393,7 @@ export class MCPProxy {
       .join(" ")
       .toLowerCase();
 
-    return (
-      text.includes("no valid session id") ||
-      text.includes("mcp-session-id header is required") ||
-      text.includes("session not found")
-    );
+    return text;
   }
 
   private extractMcpLevelError(result: any): ExhaustionError | null {

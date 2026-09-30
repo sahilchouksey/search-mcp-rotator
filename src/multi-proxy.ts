@@ -205,8 +205,6 @@ export class MultiProxy {
     originalToolName: string,
     request: any,
   ): Promise<CallToolResult> {
-    await this.ensureConnected(state);
-
     if (state.keyPool.allDegraded()) {
       throw new Error(
         `All API keys for ${state.name} are exhausted. Please add more keys or wait for cooldown.`,
@@ -227,25 +225,35 @@ export class MultiProxy {
     let lastError: any = null;
 
     const sessionRetryKeys = new Set<string>();
+    const transportRetryKeys = new Set<string>();
 
     for (let attempt = 0; attempt < maxAttempts; ) {
+      let attemptedKey = state.currentKey;
+      let callStarted = false;
+
       try {
         // First attempt: use existing connection.
         // Retry: rotate to next healthy key.
         if (attempt > 0) {
           const nextKey = state.keyPool.next(strategyOverride);
           if (!nextKey || nextKey === state.currentKey) break;
+          attemptedKey = nextKey;
           logger.info(`Retrying ${state.name} with next key`, {
             attempt: attempt + 1,
             currentKey: state.currentKey.slice(0, 8) + "...",
             nextKey: nextKey.slice(0, 8) + "...",
           });
           await this.reconnect(state, nextKey);
+        } else if (!state.connected) {
+          const key = state.keyPool.next(strategyOverride);
+          attemptedKey = key;
+          await this.reconnect(state, key);
         }
 
         // Long timeout (5 min) — heavy ops like research, page fetch, agent jobs
         // need more than the SDK's 60s default. The MCP client wrapping us can
         // still apply its own shorter timeout if desired.
+        callStarted = true;
         const result = await state.client.callTool(
           cleanRequest.params,
           undefined,
@@ -255,7 +263,7 @@ export class MultiProxy {
         const mcpError = this.extractMcpError(state.name, result);
         if (
           mcpError &&
-          this.isInvalidSessionError(mcpError) &&
+          this.isReconnectSameKeyError(mcpError) &&
           !sessionRetryKeys.has(state.currentKey)
         ) {
           sessionRetryKeys.add(state.currentKey);
@@ -284,18 +292,73 @@ export class MultiProxy {
         state.keyPool.markSuccess(state.currentKey);
         return result as CallToolResult;
       } catch (err: any) {
+        if (!callStarted && this.isTransientTransportError(err)) {
+          logger.warn(`Upstream connect failed for ${state.name}; rotating key`, {
+            attemptedKey: attemptedKey.slice(0, 8) + "...",
+            error: err?.message ?? String(err),
+          });
+          state.keyPool.markDegraded(attemptedKey, Math.min(state.config.cooldownMs, 60_000));
+          lastError = err;
+          attempt++;
+          continue;
+        }
+
         if (
-          this.isInvalidSessionError(err) &&
-          !sessionRetryKeys.has(state.currentKey)
+          this.isReconnectSameKeyError(err) &&
+          !sessionRetryKeys.has(attemptedKey)
         ) {
-          sessionRetryKeys.add(state.currentKey);
+          sessionRetryKeys.add(attemptedKey);
           logger.warn(
             `Upstream session expired for ${state.name}; reconnecting same key`,
             {
-              currentKey: state.currentKey.slice(0, 8) + "...",
+              currentKey: attemptedKey.slice(0, 8) + "...",
             },
           );
-          await this.reconnect(state, state.currentKey);
+          try {
+            await this.reconnect(state, attemptedKey);
+          } catch (reconnectError: any) {
+            logger.warn(`Same-key reconnect failed for ${state.name}; rotating key`, {
+              currentKey: attemptedKey.slice(0, 8) + "...",
+              error: reconnectError?.message ?? String(reconnectError),
+            });
+            state.keyPool.markDegraded(attemptedKey, Math.min(state.config.cooldownMs, 60_000));
+            lastError = reconnectError;
+            attempt++;
+          }
+          continue;
+        }
+
+        if (
+          this.isTransientTransportError(err) &&
+          !transportRetryKeys.has(attemptedKey)
+        ) {
+          transportRetryKeys.add(attemptedKey);
+          logger.warn(`Upstream transport failed for ${state.name}; reconnecting same key`, {
+            currentKey: attemptedKey.slice(0, 8) + "...",
+            error: err?.message ?? String(err),
+          });
+          try {
+            await this.reconnect(state, attemptedKey);
+          } catch (reconnectError: any) {
+            logger.warn(`Same-key reconnect failed for ${state.name}; rotating key`, {
+              currentKey: attemptedKey.slice(0, 8) + "...",
+              error: reconnectError?.message ?? String(reconnectError),
+            });
+            state.keyPool.markDegraded(attemptedKey, Math.min(state.config.cooldownMs, 60_000));
+            lastError = reconnectError;
+            attempt++;
+          }
+          continue;
+        }
+
+        if (this.isTransientTransportError(err)) {
+          logger.warn(`Repeated upstream transport failure for ${state.name}; rotating key`, {
+            currentKey: attemptedKey.slice(0, 8) + "...",
+            error: err?.message ?? String(err),
+          });
+          state.keyPool.markDegraded(attemptedKey, Math.min(state.config.cooldownMs, 60_000));
+          lastError = err;
+          attempt++;
           continue;
         }
 
@@ -313,7 +376,7 @@ export class MultiProxy {
             state.name,
             state.config.cooldownMs,
           );
-          state.keyPool.markDegraded(state.currentKey, cooldown);
+          state.keyPool.markDegraded(attemptedKey, cooldown);
           lastError = err;
           attempt++;
           continue;
@@ -328,7 +391,29 @@ export class MultiProxy {
     );
   }
 
-  private isInvalidSessionError(error: any): boolean {
+  private isReconnectSameKeyError(error: any): boolean {
+    const text = this.errorText(error);
+
+    return (
+      text.includes("no valid session id") ||
+      text.includes("mcp-session-id header is required") ||
+      text.includes("session not found")
+    );
+  }
+
+  private isTransientTransportError(error: any): boolean {
+    const text = this.errorText(error);
+
+    return (
+      text.includes("fetch failed") ||
+      text.includes("networkerror") ||
+      text.includes("econnreset") ||
+      text.includes("etimedout") ||
+      text.includes("socket hang up")
+    );
+  }
+
+  private errorText(error: any): string {
     const text = [
       error?.message,
       error?.mcpResultText,
@@ -342,11 +427,7 @@ export class MultiProxy {
       .join(" ")
       .toLowerCase();
 
-    return (
-      text.includes("no valid session id") ||
-      text.includes("mcp-session-id header is required") ||
-      text.includes("session not found")
-    );
+    return text;
   }
 
   private extractMcpError(
