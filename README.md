@@ -35,11 +35,22 @@ One entry covers all your configured providers.
       "type": "local",
       "command": ["npx", "-y", "search-mcp-rotator@latest"],
       "enabled": true,
-      "timeout": 30000
+      "timeout": 60000
     }
+  },
+  // Top-level key (applies to ALL MCP servers, not per-server):
+  // extends the timeout for tool-call execution.
+  "experimental": {
+    "mcp_timeout": 300000
   }
 }
 ```
+
+> `timeout` (per-server, 60 s) governs tool discovery; the top-level
+> `experimental.mcp_timeout` (300 s) governs tool-call execution. Both are
+> safe upper bounds: per-provider discovery is capped at ~12 s internally,
+> so `tools/list` returns from the bundled static registry in ~1–2 ms
+> without ever waiting on a slow upstream.
 
 #### Pi agent — `~/.pi/agent/mcp.json`
 
