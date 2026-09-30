@@ -9,7 +9,7 @@ export interface StaticProviderToolRegistryEntry {
   tools: Tool[];
 }
 
-export const STATIC_TOOL_REGISTRY_GENERATED_AT = "2026-06-05T08:00:19.675Z";
+export const STATIC_TOOL_REGISTRY_GENERATED_AT = "2026-09-30T09:28:56.464Z";
 
 export const STATIC_TOOL_REGISTRY: Record<string, StaticProviderToolRegistryEntry> = {
   "brightdata": {
@@ -202,10 +202,56 @@ export const STATIC_TOOL_REGISTRY: Record<string, StaticProviderToolRegistryEntr
   "dappier": {
     "provider": "dappier",
     "url": "https://mcp.dappier.com/mcp",
-    "generatedAt": "2026-06-05T08:00:19.675Z",
-    "toolCount": 14,
-    "fingerprint": "9ee04eca1929415ddb3ced43d07cdd31f900e6e2e156cbd62ce7e60ae8da8dab",
+    "generatedAt": "2026-09-30T09:28:56.464Z",
+    "toolCount": 8,
+    "fingerprint": "ac79a3d8d330771c28bbc6bbf68096e742b3374925f7b9393259b53ed0cd767e",
     "tools": [
+      {
+        "name": "9-and-10-news",
+        "description": "Fetch up-to-date local news, weather forecasts, sports coverage, and community stories for Northern Michigan, including the Cadillac and Traverse City areas from 9 and 10 News. ($0.01 / query)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Query"
+            },
+            "similarity_top_k": {
+              "type": "number",
+              "default": 9,
+              "description": "Number of top similar articles to retrieve."
+            },
+            "ref": {
+              "type": "string",
+              "description": "Optional site domain to prioritize recommendations."
+            },
+            "num_articles_ref": {
+              "type": "number",
+              "default": 0,
+              "description": "Minimum number of articles to return from the reference domain."
+            },
+            "search_algorithm": {
+              "type": "string",
+              "enum": [
+                "most_recent",
+                "semantic",
+                "most_recent_semantic",
+                "trending"
+              ],
+              "default": "most_recent",
+              "description": "The search algorithm to use. ex: 'most_recent', 'semantic', 'most_recent_semantic' \n\t\t\tor 'trending'."
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "annotations": {
+          "title": "9 and 10 News"
+        }
+      },
       {
         "name": "benzinga",
         "description": "Access real-time financial news from Benzinga.com. ($0.02 / query)",
@@ -391,52 +437,6 @@ export const STATIC_TOOL_REGISTRY: Record<string, StaticProviderToolRegistryEntr
         }
       },
       {
-        "name": "lifestyle-news",
-        "description": "Fetch AI-powered Lifestyle News recommendations. Access current lifestyle updates, analysis, and insights from leading lifestyle publications like The Mix, Snipdaily, Nerdable and Familyproof. ($0.1 / query)",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "query": {
-              "type": "string",
-              "description": "Query"
-            },
-            "similarity_top_k": {
-              "type": "number",
-              "default": 9,
-              "description": "Number of top similar articles to retrieve."
-            },
-            "ref": {
-              "type": "string",
-              "description": "Optional site domain to prioritize recommendations."
-            },
-            "num_articles_ref": {
-              "type": "number",
-              "default": 0,
-              "description": "Minimum number of articles to return from the reference domain."
-            },
-            "search_algorithm": {
-              "type": "string",
-              "enum": [
-                "most_recent",
-                "semantic",
-                "most_recent_semantic",
-                "trending"
-              ],
-              "default": "most_recent",
-              "description": "The search algorithm to use. ex: 'most_recent', 'semantic', 'most_recent_semantic' \n\t\t\tor 'trending'."
-            }
-          },
-          "required": [
-            "query"
-          ],
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
-        },
-        "annotations": {
-          "title": "Lifestyle News"
-        }
-      },
-      {
         "name": "methodshop",
         "description": "Access tech guides, how-tos, and digital lifestyle articles from MethodShop.com. Perfect for delivering gadget tips, answering tech questions, and recommending productivity content. ($0.003 / query)",
         "inputSchema": {
@@ -483,98 +483,6 @@ export const STATIC_TOOL_REGISTRY: Record<string, StaticProviderToolRegistryEntr
         }
       },
       {
-        "name": "nine-ten-news",
-        "description": "Fetch up-to-date local news, weather forecasts, sports coverage, and community stories for Northern Michigan, including the Cadillac and Traverse City areas from 9 and 10 News. ($0.01 / query)",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "query": {
-              "type": "string",
-              "description": "Query"
-            },
-            "similarity_top_k": {
-              "type": "number",
-              "default": 9,
-              "description": "Number of top similar articles to retrieve."
-            },
-            "ref": {
-              "type": "string",
-              "description": "Optional site domain to prioritize recommendations."
-            },
-            "num_articles_ref": {
-              "type": "number",
-              "default": 0,
-              "description": "Minimum number of articles to return from the reference domain."
-            },
-            "search_algorithm": {
-              "type": "string",
-              "enum": [
-                "most_recent",
-                "semantic",
-                "most_recent_semantic",
-                "trending"
-              ],
-              "default": "most_recent",
-              "description": "The search algorithm to use. ex: 'most_recent', 'semantic', 'most_recent_semantic' \n\t\t\tor 'trending'."
-            }
-          },
-          "required": [
-            "query"
-          ],
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
-        },
-        "annotations": {
-          "title": "9 and 10 News"
-        }
-      },
-      {
-        "name": "one-green-planet",
-        "description": "Fetch AI-powered One Green Planet guides and articles on plant-based diets, conscious consumerism, animal rights, sustainability, food, wellness and environmental categories. ($0.01 / query)",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "query": {
-              "type": "string",
-              "description": "Query"
-            },
-            "similarity_top_k": {
-              "type": "number",
-              "default": 9,
-              "description": "Number of top similar articles to retrieve."
-            },
-            "ref": {
-              "type": "string",
-              "description": "Optional site domain to prioritize recommendations."
-            },
-            "num_articles_ref": {
-              "type": "number",
-              "default": 0,
-              "description": "Minimum number of articles to return from the reference domain."
-            },
-            "search_algorithm": {
-              "type": "string",
-              "enum": [
-                "most_recent",
-                "semantic",
-                "most_recent_semantic",
-                "trending"
-              ],
-              "default": "most_recent",
-              "description": "The search algorithm to use. ex: 'most_recent', 'semantic', 'most_recent_semantic' \n\t\t\tor 'trending'."
-            }
-          },
-          "required": [
-            "query"
-          ],
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
-        },
-        "annotations": {
-          "title": "One Green Planet"
-        }
-      },
-      {
         "name": "real-time-search",
         "description": "Real-time web search to access the latest news, stocks, gold stocks, uk stock market, global market performance, financial news, weather, travel information, deals, and more.",
         "inputSchema": {
@@ -593,115 +501,6 @@ export const STATIC_TOOL_REGISTRY: Record<string, StaticProviderToolRegistryEntr
         },
         "annotations": {
           "title": "Real Time Search"
-        }
-      },
-      {
-        "name": "research-papers-search",
-        "description": "Perform a real-time research paper search. Provides instant access to over 2.4 million open-access scholarly articles across domains including physics, mathematics, computer science, quantitative biology, quantitative finance, statistics, electrical engineering and systems science, and economics. ($0.003 / query)",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "query": {
-              "type": "string",
-              "description": "Query"
-            }
-          },
-          "required": [
-            "query"
-          ],
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
-        },
-        "annotations": {
-          "title": "Research Papers Search"
-        }
-      },
-      {
-        "name": "sports-news",
-        "description": "Fetch AI-powered Sports News recommendations. Get real-time news, updates, and personalized content from top sports sources like Sportsnaut, Forever Blueshirts, Minnesota Sports Fan, LAFB Network, Bounding Into Sports, and Ringside Intel. ($0.004 / query)",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "query": {
-              "type": "string",
-              "description": "Query"
-            },
-            "similarity_top_k": {
-              "type": "number",
-              "default": 9,
-              "description": "Number of top similar articles to retrieve."
-            },
-            "ref": {
-              "type": "string",
-              "description": "Optional site domain to prioritize recommendations."
-            },
-            "num_articles_ref": {
-              "type": "number",
-              "default": 0,
-              "description": "Minimum number of articles to return from the reference domain."
-            },
-            "search_algorithm": {
-              "type": "string",
-              "enum": [
-                "most_recent",
-                "semantic",
-                "most_recent_semantic",
-                "trending"
-              ],
-              "default": "most_recent",
-              "description": "The search algorithm to use. ex: 'most_recent', 'semantic', 'most_recent_semantic' \n\t\t\tor 'trending'."
-            }
-          },
-          "required": [
-            "query"
-          ],
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
-        },
-        "annotations": {
-          "title": "Sports News"
-        }
-      },
-      {
-        "name": "stellar-ai",
-        "description": "Get advanced roof analysis and solar panel placement recommendations with just a residential home address. Powered by Digital Satellite Imagery (DSM) and solar irradiance insights for precise energy estimates. ($0.5 / query)",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "query": {
-              "type": "string",
-              "description": "Query"
-            }
-          },
-          "required": [
-            "query"
-          ],
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
-        },
-        "annotations": {
-          "title": "Stellar AI"
-        }
-      },
-      {
-        "name": "stock-market-data",
-        "description": "only use this if user query requires real-time financial news, stock prices, and trades",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "query": {
-              "type": "string",
-              "description": "Query"
-            }
-          },
-          "required": [
-            "query"
-          ],
-          "additionalProperties": false,
-          "$schema": "http://json-schema.org/draft-07/schema#"
-        },
-        "annotations": {
-          "title": "Stock Market Data"
         }
       },
       {
@@ -803,7 +602,7 @@ export const STATIC_TOOL_REGISTRY: Record<string, StaticProviderToolRegistryEntr
             "query": {
               "type": "string",
               "minLength": 1,
-              "description": "Natural language search query. Should be a semantically rich description of the ideal page, not just keywords. Optionally include category:<type> (company, people) to focus results — e.g. 'category:people John Doe software engineer'."
+              "description": "Natural language search query. Should be a semantically rich description of the ideal page, not just keywords. Optionally include category:<type> (company, people) to focus results \u2014 e.g. 'category:people John Doe software engineer'."
             },
             "numResults": {
               "type": "number",
@@ -837,7 +636,7 @@ export const STATIC_TOOL_REGISTRY: Record<string, StaticProviderToolRegistryEntr
     "tools": [
       {
         "name": "firecrawl_agent",
-        "description": "\nAutonomous web research agent. This is a separate AI agent layer that independently browses the internet, searches for information, navigates through pages, and extracts structured data based on your query. You describe what you need, and the agent figures out where to find it.\n\n**How it works:** The agent performs web searches, follows links, reads pages, and gathers data autonomously. This runs **asynchronously** - it returns a job ID immediately, and you poll `firecrawl_agent_status` to check when complete and retrieve results.\n\n**IMPORTANT - Async workflow with patient polling:**\n1. Call `firecrawl_agent` with your prompt/schema → returns job ID immediately\n2. Poll `firecrawl_agent_status` with the job ID to check progress\n3. **Keep polling for at least 2-3 minutes** - agent research typically takes 1-5 minutes for complex queries\n4. Poll every 15-30 seconds until status is \"completed\" or \"failed\"\n5. Do NOT give up after just a few polling attempts - the agent needs time to research\n\n**Expected wait times:**\n- Simple queries with provided URLs: 30 seconds - 1 minute\n- Complex research across multiple sites: 2-5 minutes\n- Deep research tasks: 5+ minutes\n\n**Best for:** Complex research tasks where you don't know the exact URLs; multi-source data gathering; finding information scattered across the web; extracting data from JavaScript-heavy SPAs that fail with regular scrape.\n**Not recommended for:**\n- Single-page extraction when you have a URL (use firecrawl_scrape, faster and cheaper)\n- Web search (use firecrawl_search first)\n- Interactive page tasks like clicking, filling forms, login, or navigating JS-heavy SPAs (use firecrawl_scrape + firecrawl_interact)\n- Extracting specific data from a known page (use firecrawl_scrape with JSON format)\n\n**Arguments:**\n- prompt: Natural language description of the data you want (required, max 10,000 characters)\n- urls: Optional array of URLs to focus the agent on specific pages\n- schema: Optional JSON schema for structured output\n\n**Prompt Example:** \"Find the founders of Firecrawl and their backgrounds\"\n**Usage Example (start agent, then poll patiently for results):**\n```json\n{\n  \"name\": \"firecrawl_agent\",\n  \"arguments\": {\n    \"prompt\": \"Find the top 5 AI startups founded in 2024 and their funding amounts\",\n    \"schema\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"startups\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"name\": { \"type\": \"string\" },\n              \"funding\": { \"type\": \"string\" },\n              \"founded\": { \"type\": \"string\" }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n```\nThen poll with `firecrawl_agent_status` every 15-30 seconds for at least 2-3 minutes.\n\n**Usage Example (with URLs - agent focuses on specific pages):**\n```json\n{\n  \"name\": \"firecrawl_agent\",\n  \"arguments\": {\n    \"urls\": [\"https://docs.firecrawl.dev\", \"https://firecrawl.dev/pricing\"],\n    \"prompt\": \"Compare the features and pricing information from these pages\"\n  }\n}\n```\n**Returns:** Job ID for status checking. Use `firecrawl_agent_status` to poll for results.\n",
+        "description": "\nAutonomous web research agent. This is a separate AI agent layer that independently browses the internet, searches for information, navigates through pages, and extracts structured data based on your query. You describe what you need, and the agent figures out where to find it.\n\n**How it works:** The agent performs web searches, follows links, reads pages, and gathers data autonomously. This runs **asynchronously** - it returns a job ID immediately, and you poll `firecrawl_agent_status` to check when complete and retrieve results.\n\n**IMPORTANT - Async workflow with patient polling:**\n1. Call `firecrawl_agent` with your prompt/schema \u2192 returns job ID immediately\n2. Poll `firecrawl_agent_status` with the job ID to check progress\n3. **Keep polling for at least 2-3 minutes** - agent research typically takes 1-5 minutes for complex queries\n4. Poll every 15-30 seconds until status is \"completed\" or \"failed\"\n5. Do NOT give up after just a few polling attempts - the agent needs time to research\n\n**Expected wait times:**\n- Simple queries with provided URLs: 30 seconds - 1 minute\n- Complex research across multiple sites: 2-5 minutes\n- Deep research tasks: 5+ minutes\n\n**Best for:** Complex research tasks where you don't know the exact URLs; multi-source data gathering; finding information scattered across the web; extracting data from JavaScript-heavy SPAs that fail with regular scrape.\n**Not recommended for:**\n- Single-page extraction when you have a URL (use firecrawl_scrape, faster and cheaper)\n- Web search (use firecrawl_search first)\n- Interactive page tasks like clicking, filling forms, login, or navigating JS-heavy SPAs (use firecrawl_scrape + firecrawl_interact)\n- Extracting specific data from a known page (use firecrawl_scrape with JSON format)\n\n**Arguments:**\n- prompt: Natural language description of the data you want (required, max 10,000 characters)\n- urls: Optional array of URLs to focus the agent on specific pages\n- schema: Optional JSON schema for structured output\n\n**Prompt Example:** \"Find the founders of Firecrawl and their backgrounds\"\n**Usage Example (start agent, then poll patiently for results):**\n```json\n{\n  \"name\": \"firecrawl_agent\",\n  \"arguments\": {\n    \"prompt\": \"Find the top 5 AI startups founded in 2024 and their funding amounts\",\n    \"schema\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"startups\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"name\": { \"type\": \"string\" },\n              \"funding\": { \"type\": \"string\" },\n              \"founded\": { \"type\": \"string\" }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n```\nThen poll with `firecrawl_agent_status` every 15-30 seconds for at least 2-3 minutes.\n\n**Usage Example (with URLs - agent focuses on specific pages):**\n```json\n{\n  \"name\": \"firecrawl_agent\",\n  \"arguments\": {\n    \"urls\": [\"https://docs.firecrawl.dev\", \"https://firecrawl.dev/pricing\"],\n    \"prompt\": \"Compare the features and pricing information from these pages\"\n  }\n}\n```\n**Returns:** Job ID for status checking. Use `firecrawl_agent_status` to poll for results.\n",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -1229,7 +1028,7 @@ export const STATIC_TOOL_REGISTRY: Record<string, StaticProviderToolRegistryEntr
       },
       {
         "name": "firecrawl_interact",
-        "description": "\nInteract with a previously scraped page in a live browser session. Scrape a page first with firecrawl_scrape, then use the returned scrapeId to click buttons, fill forms, extract dynamic content, or navigate deeper.\n\n**Best for:** Multi-step workflows on a single page — searching a site, clicking through results, filling forms, extracting data that requires interaction.\n**Requires:** A scrapeId from a previous firecrawl_scrape call (found in the metadata of the scrape response).\n\n**Arguments:**\n- scrapeId: The scrape job ID from a previous scrape (required)\n- prompt: Natural language instruction describing the action to take (use this OR code)\n- code: Code to execute in the browser session (use this OR prompt)\n- language: \"bash\", \"python\", or \"node\" (optional, defaults to \"node\", only used with code)\n- timeout: Execution timeout in seconds, 1-300 (optional, defaults to 30)\n\n**Usage Example (prompt):**\n```json\n{\n  \"name\": \"firecrawl_interact\",\n  \"arguments\": {\n    \"scrapeId\": \"scrape-id-from-previous-scrape\",\n    \"prompt\": \"Click on the first product and tell me its price\"\n  }\n}\n```\n\n**Usage Example (code):**\n```json\n{\n  \"name\": \"firecrawl_interact\",\n  \"arguments\": {\n    \"scrapeId\": \"scrape-id-from-previous-scrape\",\n    \"code\": \"agent-browser click @e5\",\n    \"language\": \"bash\"\n  }\n}\n```\n**Returns:** Execution result including output, stdout, stderr, exit code, and live view URLs.\n",
+        "description": "\nInteract with a previously scraped page in a live browser session. Scrape a page first with firecrawl_scrape, then use the returned scrapeId to click buttons, fill forms, extract dynamic content, or navigate deeper.\n\n**Best for:** Multi-step workflows on a single page \u2014 searching a site, clicking through results, filling forms, extracting data that requires interaction.\n**Requires:** A scrapeId from a previous firecrawl_scrape call (found in the metadata of the scrape response).\n\n**Arguments:**\n- scrapeId: The scrape job ID from a previous scrape (required)\n- prompt: Natural language instruction describing the action to take (use this OR code)\n- code: Code to execute in the browser session (use this OR prompt)\n- language: \"bash\", \"python\", or \"node\" (optional, defaults to \"node\", only used with code)\n- timeout: Execution timeout in seconds, 1-300 (optional, defaults to 30)\n\n**Usage Example (prompt):**\n```json\n{\n  \"name\": \"firecrawl_interact\",\n  \"arguments\": {\n    \"scrapeId\": \"scrape-id-from-previous-scrape\",\n    \"prompt\": \"Click on the first product and tell me its price\"\n  }\n}\n```\n\n**Usage Example (code):**\n```json\n{\n  \"name\": \"firecrawl_interact\",\n  \"arguments\": {\n    \"scrapeId\": \"scrape-id-from-previous-scrape\",\n    \"code\": \"agent-browser click @e5\",\n    \"language\": \"bash\"\n  }\n}\n```\n**Returns:** Execution result including output, stdout, stderr, exit code, and live view URLs.\n",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -1337,7 +1136,7 @@ export const STATIC_TOOL_REGISTRY: Record<string, StaticProviderToolRegistryEntr
       },
       {
         "name": "firecrawl_monitor_check",
-        "description": "\nGet a single check with page-level diff results. Filter `pageStatus` to surface only the pages that changed (or were new, removed, etc.).\n\nEach entry in `data.pages[]` has `url`, `status` (`same` | `new` | `changed` | `removed` | `error`), optional `judgment` when goal-based judging ran, and — when changed — a `diff` and possibly a `snapshot`. The shape of `diff` depends on the monitor's `formats` configuration:\n\n- **Markdown mode (default).** `diff.text` is the unified markdown diff; `diff.json` is a parse-diff AST (`{ files: [...] }`). No `snapshot`.\n- **JSON mode** (`changeTracking` with `modes: [\"json\"]`). `diff.json` is a per-field map keyed by JSON path into the extraction, e.g. `plans[0].price`, with each value being `{ previous, current }`. `snapshot.json` is the full current extraction. No `diff.text`.\n- **Mixed mode** (`modes: [\"json\", \"git-diff\"]`). Both `diff.text` (markdown sidecar) AND `diff.json` (per-field map) are present, plus `snapshot.json`.\n\n**Example JSON-mode response `pages[]` entry:**\n\n```json\n{\n  \"url\": \"https://example.com/pricing\",\n  \"status\": \"changed\",\n  \"diff\": {\n    \"json\": {\n      \"plans[0].price\":       { \"previous\": \"$19/mo\",        \"current\": \"$24/mo\" },\n      \"plans[1].features[2]\": { \"previous\": \"10 GB storage\", \"current\": \"25 GB storage\" }\n    }\n  },\n  \"snapshot\": { \"json\": { \"plans\": [/* current full extraction matching the monitor's schema */] } },\n  \"judgment\": {\n    \"meaningful\": true,\n    \"confidence\": \"high\",\n    \"reason\": \"The pricing changed, which matches the monitor goal.\",\n    \"meaningfulChanges\": [\n      {\n        \"type\": \"changed\",\n        \"before\": \"$19/mo\",\n        \"after\": \"$24/mo\",\n        \"reason\": \"The tracked plan price changed.\"\n      }\n    ]\n  }\n}\n```\n\nWhen summarizing a check for the user, prefer `diff.json` paths (e.g. \"plans[0].price changed from $19/mo to $24/mo\") over re-printing the markdown diff — it's more concise and grounded in the schema fields they asked for.\n\nWhen `judgment` is present, use it to decide what to surface. `judgment.meaningful: false` means the change was classified as noise for the monitor's goal. When `judgment.meaningfulChanges` is present, prefer those goal-relevant changes over raw diff hunks; each item includes `type`, `before`, `after`, and `reason`.\n\nThe endpoint paginates via a top-level `next` URL; this tool returns one page at a time. Increase `limit` (max 100) to fetch fewer pages.\n\n**Usage Example:**\n```json\n{\n  \"name\": \"firecrawl_monitor_check\",\n  \"arguments\": {\n    \"id\": \"mon_abc123\",\n    \"checkId\": \"chk_xyz\",\n    \"pageStatus\": \"changed\"\n  }\n}\n```\n",
+        "description": "\nGet a single check with page-level diff results. Filter `pageStatus` to surface only the pages that changed (or were new, removed, etc.).\n\nEach entry in `data.pages[]` has `url`, `status` (`same` | `new` | `changed` | `removed` | `error`), optional `judgment` when goal-based judging ran, and \u2014 when changed \u2014 a `diff` and possibly a `snapshot`. The shape of `diff` depends on the monitor's `formats` configuration:\n\n- **Markdown mode (default).** `diff.text` is the unified markdown diff; `diff.json` is a parse-diff AST (`{ files: [...] }`). No `snapshot`.\n- **JSON mode** (`changeTracking` with `modes: [\"json\"]`). `diff.json` is a per-field map keyed by JSON path into the extraction, e.g. `plans[0].price`, with each value being `{ previous, current }`. `snapshot.json` is the full current extraction. No `diff.text`.\n- **Mixed mode** (`modes: [\"json\", \"git-diff\"]`). Both `diff.text` (markdown sidecar) AND `diff.json` (per-field map) are present, plus `snapshot.json`.\n\n**Example JSON-mode response `pages[]` entry:**\n\n```json\n{\n  \"url\": \"https://example.com/pricing\",\n  \"status\": \"changed\",\n  \"diff\": {\n    \"json\": {\n      \"plans[0].price\":       { \"previous\": \"$19/mo\",        \"current\": \"$24/mo\" },\n      \"plans[1].features[2]\": { \"previous\": \"10 GB storage\", \"current\": \"25 GB storage\" }\n    }\n  },\n  \"snapshot\": { \"json\": { \"plans\": [/* current full extraction matching the monitor's schema */] } },\n  \"judgment\": {\n    \"meaningful\": true,\n    \"confidence\": \"high\",\n    \"reason\": \"The pricing changed, which matches the monitor goal.\",\n    \"meaningfulChanges\": [\n      {\n        \"type\": \"changed\",\n        \"before\": \"$19/mo\",\n        \"after\": \"$24/mo\",\n        \"reason\": \"The tracked plan price changed.\"\n      }\n    ]\n  }\n}\n```\n\nWhen summarizing a check for the user, prefer `diff.json` paths (e.g. \"plans[0].price changed from $19/mo to $24/mo\") over re-printing the markdown diff \u2014 it's more concise and grounded in the schema fields they asked for.\n\nWhen `judgment` is present, use it to decide what to surface. `judgment.meaningful: false` means the change was classified as noise for the monitor's goal. When `judgment.meaningfulChanges` is present, prefer those goal-relevant changes over raw diff hunks; each item includes `type`, `before`, `after`, and `reason`.\n\nThe endpoint paginates via a top-level `next` URL; this tool returns one page at a time. Increase `limit` (max 100) to fetch fewer pages.\n\n**Usage Example:**\n```json\n{\n  \"name\": \"firecrawl_monitor_check\",\n  \"arguments\": {\n    \"id\": \"mon_abc123\",\n    \"checkId\": \"chk_xyz\",\n    \"pageStatus\": \"changed\"\n  }\n}\n```\n",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -1426,7 +1225,7 @@ export const STATIC_TOOL_REGISTRY: Record<string, StaticProviderToolRegistryEntr
       },
       {
         "name": "firecrawl_monitor_create",
-        "description": "\nCreate a Firecrawl monitor — a recurring scrape or crawl that diffs each result against the last retained snapshot.\n\nPrefer the simple path: pass `page` or `pages` plus `goal`. The tool will create a scrape monitor with a 30-minute schedule and meaningful-change judging enabled by the API. Use `body` only for advanced requests such as crawl targets, JSON change tracking, custom retention, or manual `judgeEnabled` control.\n\nMeaningful-change judge: set `goal` to a plain-language description of what the user actually cares about. `judgeEnabled` defaults to true when `goal` is set, so providing `goal` is enough. Page webhooks expose `isMeaningful` and `judgment` on `monitor.page` events.\n\nSimple fields:\n- `page`: one page URL to monitor.\n- `pages`: multiple page URLs to monitor.\n- `goal`: plain-English instruction for what changes matter. Required for the simple path.\n- `scheduleText`: optional natural-language schedule, default `every 30 minutes`.\n- `email`: optional email recipient for summaries.\n- `webhookUrl`: optional webhook URL. Configures `monitor.page` and `monitor.check.completed`.\n\nGoal guidance:\n- Expand the user's one-line monitoring intent into a concise 2-3 sentence monitor goal.\n- State what should trigger an alert, restate any scope the user gave, and include intent-specific exclusions only when obvious from the user's request.\n- Generic noise such as whitespace, formatting-only changes, request IDs, tracking params, generic metadata, and unrelated page chrome is already handled by the judge; do not repeat it in every goal.\n- If the user is vague, keep the goal broad rather than guessing exclusions. If the user asks for broad monitoring or \"any change\", preserve that and do not add exclusions that hide changes.\n- If the user says they do not care about something, include that explicitly. It is okay to ask whether they want to ignore specific noise when it is likely to matter.\n- Do not invent page-specific sections, thresholds, entities, or business rules unless the user mentioned them.\n\nFull `body` requests require: `name`, `schedule` (with `cron` or `text`), and `targets` (one or more `{ type: 'scrape', urls: [...] }` or `{ type: 'crawl', url: '...' }`). Optional: `goal`, `judgeEnabled`, `webhook`, `notification`, `retentionDays`.\n\n**Markdown-mode (default):** Each check produces a unified text diff of the page's markdown. No extra configuration needed.\n\n```json\n{\n  \"name\": \"firecrawl_monitor_create\",\n  \"arguments\": {\n    \"page\": \"https://example.com/blog\",\n    \"goal\": \"Alert when a new blog post is published or an existing headline changes.\",\n    \"email\": \"alerts@example.com\"\n  }\n}\n```\n\n**Multiple pages:**\n\n```json\n{\n  \"name\": \"firecrawl_monitor_create\",\n  \"arguments\": {\n    \"pages\": [\"https://example.com/pricing\", \"https://example.com/changelog\"],\n    \"goal\": \"Alert when pricing, packaging, or launch messaging changes.\",\n    \"webhookUrl\": \"https://example.com/webhooks/firecrawl\"\n  }\n}\n```\n\n**JSON-mode change tracking:** To detect changes in **specific structured fields** (price, headline, in-stock flag, list items) instead of the whole page, add a `changeTracking` format with `modes: [\"json\"]` and a JSON schema to the target's `scrapeOptions.formats`. The check response will then carry a per-field diff (keyed by JSON path, e.g. `plans[0].price`) and a `snapshot.json` with the full current extraction. See `firecrawl_monitor_check` for the response shape.\n\n```json\n{\n  \"name\": \"firecrawl_monitor_create\",\n  \"arguments\": {\n    \"body\": {\n      \"name\": \"Pricing watch\",\n      \"schedule\": { \"text\": \"hourly\", \"timezone\": \"UTC\" },\n      \"goal\": \"Alert when a pricing tier, price, billing period, limit, or headline feature changes. Ignore unrelated marketing copy unless it changes the pricing offer.\",\n      \"targets\": [{\n        \"type\": \"scrape\",\n        \"urls\": [\"https://example.com/pricing\"],\n        \"scrapeOptions\": {\n          \"formats\": [{\n            \"type\": \"changeTracking\",\n            \"modes\": [\"json\"],\n            \"prompt\": \"Extract pricing tiers and headline features for each plan.\",\n            \"schema\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"plans\": {\n                  \"type\": \"array\",\n                  \"items\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                      \"name\":     { \"type\": \"string\" },\n                      \"price\":    { \"type\": \"string\" },\n                      \"features\": { \"type\": \"array\", \"items\": { \"type\": \"string\" } }\n                    }\n                  }\n                }\n              }\n            }\n          }]\n        }\n      }]\n    }\n  }\n}\n```\n\n**Mixed mode (JSON + git-diff):** Use `modes: [\"json\", \"git-diff\"]` to get both per-field diffs and a markdown sidecar. The page is marked `changed` whenever either surface changed.\n",
+        "description": "\nCreate a Firecrawl monitor \u2014 a recurring scrape or crawl that diffs each result against the last retained snapshot.\n\nPrefer the simple path: pass `page` or `pages` plus `goal`. The tool will create a scrape monitor with a 30-minute schedule and meaningful-change judging enabled by the API. Use `body` only for advanced requests such as crawl targets, JSON change tracking, custom retention, or manual `judgeEnabled` control.\n\nMeaningful-change judge: set `goal` to a plain-language description of what the user actually cares about. `judgeEnabled` defaults to true when `goal` is set, so providing `goal` is enough. Page webhooks expose `isMeaningful` and `judgment` on `monitor.page` events.\n\nSimple fields:\n- `page`: one page URL to monitor.\n- `pages`: multiple page URLs to monitor.\n- `goal`: plain-English instruction for what changes matter. Required for the simple path.\n- `scheduleText`: optional natural-language schedule, default `every 30 minutes`.\n- `email`: optional email recipient for summaries.\n- `webhookUrl`: optional webhook URL. Configures `monitor.page` and `monitor.check.completed`.\n\nGoal guidance:\n- Expand the user's one-line monitoring intent into a concise 2-3 sentence monitor goal.\n- State what should trigger an alert, restate any scope the user gave, and include intent-specific exclusions only when obvious from the user's request.\n- Generic noise such as whitespace, formatting-only changes, request IDs, tracking params, generic metadata, and unrelated page chrome is already handled by the judge; do not repeat it in every goal.\n- If the user is vague, keep the goal broad rather than guessing exclusions. If the user asks for broad monitoring or \"any change\", preserve that and do not add exclusions that hide changes.\n- If the user says they do not care about something, include that explicitly. It is okay to ask whether they want to ignore specific noise when it is likely to matter.\n- Do not invent page-specific sections, thresholds, entities, or business rules unless the user mentioned them.\n\nFull `body` requests require: `name`, `schedule` (with `cron` or `text`), and `targets` (one or more `{ type: 'scrape', urls: [...] }` or `{ type: 'crawl', url: '...' }`). Optional: `goal`, `judgeEnabled`, `webhook`, `notification`, `retentionDays`.\n\n**Markdown-mode (default):** Each check produces a unified text diff of the page's markdown. No extra configuration needed.\n\n```json\n{\n  \"name\": \"firecrawl_monitor_create\",\n  \"arguments\": {\n    \"page\": \"https://example.com/blog\",\n    \"goal\": \"Alert when a new blog post is published or an existing headline changes.\",\n    \"email\": \"alerts@example.com\"\n  }\n}\n```\n\n**Multiple pages:**\n\n```json\n{\n  \"name\": \"firecrawl_monitor_create\",\n  \"arguments\": {\n    \"pages\": [\"https://example.com/pricing\", \"https://example.com/changelog\"],\n    \"goal\": \"Alert when pricing, packaging, or launch messaging changes.\",\n    \"webhookUrl\": \"https://example.com/webhooks/firecrawl\"\n  }\n}\n```\n\n**JSON-mode change tracking:** To detect changes in **specific structured fields** (price, headline, in-stock flag, list items) instead of the whole page, add a `changeTracking` format with `modes: [\"json\"]` and a JSON schema to the target's `scrapeOptions.formats`. The check response will then carry a per-field diff (keyed by JSON path, e.g. `plans[0].price`) and a `snapshot.json` with the full current extraction. See `firecrawl_monitor_check` for the response shape.\n\n```json\n{\n  \"name\": \"firecrawl_monitor_create\",\n  \"arguments\": {\n    \"body\": {\n      \"name\": \"Pricing watch\",\n      \"schedule\": { \"text\": \"hourly\", \"timezone\": \"UTC\" },\n      \"goal\": \"Alert when a pricing tier, price, billing period, limit, or headline feature changes. Ignore unrelated marketing copy unless it changes the pricing offer.\",\n      \"targets\": [{\n        \"type\": \"scrape\",\n        \"urls\": [\"https://example.com/pricing\"],\n        \"scrapeOptions\": {\n          \"formats\": [{\n            \"type\": \"changeTracking\",\n            \"modes\": [\"json\"],\n            \"prompt\": \"Extract pricing tiers and headline features for each plan.\",\n            \"schema\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"plans\": {\n                  \"type\": \"array\",\n                  \"items\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                      \"name\":     { \"type\": \"string\" },\n                      \"price\":    { \"type\": \"string\" },\n                      \"features\": { \"type\": \"array\", \"items\": { \"type\": \"string\" } }\n                    }\n                  }\n                }\n              }\n            }\n          }]\n        }\n      }]\n    }\n  }\n}\n```\n\n**Mixed mode (JSON + git-diff):** Use `modes: [\"json\", \"git-diff\"]` to get both per-field diffs and a markdown sidecar. The page is marked `changed` whenever either surface changed.\n",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -1602,7 +1401,7 @@ export const STATIC_TOOL_REGISTRY: Record<string, StaticProviderToolRegistryEntr
       },
       {
         "name": "firecrawl_scrape",
-        "description": "\nScrape content from a single URL with advanced options.\nThis is the most powerful, fastest and most reliable scraper tool, if available you should always default to using this tool for any web scraping needs.\n\n**Best for:** Single page content extraction, when you know exactly which page contains the information.\n**Not recommended for:** Multiple pages (call scrape multiple times or use crawl), unknown page location (use search).\n**Common mistakes:** Using markdown format when extracting specific data points (use JSON instead).\n**Other Features:** Use 'branding' format to extract brand identity (colors, fonts, typography, spacing, UI components) for design analysis or style replication.\n\n**CRITICAL - Format Selection (you MUST follow this):**\nWhen the user asks for SPECIFIC data points, you MUST use JSON format with a schema. Only use markdown when the user needs the ENTIRE page content.\n\n**Use JSON format when user asks for:**\n- Parameters, fields, or specifications (e.g., \"get the header parameters\", \"what are the required fields\")\n- Prices, numbers, or structured data (e.g., \"extract the pricing\", \"get the product details\")\n- API details, endpoints, or technical specs (e.g., \"find the authentication endpoint\")\n- Lists of items or properties (e.g., \"list the features\", \"get all the options\")\n- Any specific piece of information from a page\n\n**Use markdown format ONLY when:**\n- User wants to read/summarize an entire article or blog post\n- User needs to see all content on a page without specific extraction\n- User explicitly asks for the full page content\n\n**Handling JavaScript-rendered pages (SPAs):**\nIf JSON extraction returns empty, minimal, or just navigation content, the page is likely JavaScript-rendered or the content is on a different URL. Try these steps IN ORDER:\n1. **Add waitFor parameter:** Set `waitFor: 5000` to `waitFor: 10000` to allow JavaScript to render before extraction\n2. **Try a different URL:** If the URL has a hash fragment (#section), try the base URL or look for a direct page URL\n3. **Use firecrawl_map to find the correct page:** Large documentation sites or SPAs often spread content across multiple URLs. Use `firecrawl_map` with a `search` parameter to discover the specific page containing your target content, then scrape that URL directly.\n   Example: If scraping \"https://docs.example.com/reference\" fails to find webhook parameters, use `firecrawl_map` with `{\"url\": \"https://docs.example.com/reference\", \"search\": \"webhook\"}` to find URLs like \"/reference/webhook-events\", then scrape that specific page.\n4. **Use firecrawl_agent:** As a last resort for heavily dynamic pages where map+scrape still fails, use the agent which can autonomously navigate and research\n\n**Usage Example (JSON format - REQUIRED for specific data extraction):**\n```json\n{\n  \"name\": \"firecrawl_scrape\",\n  \"arguments\": {\n    \"url\": \"https://example.com/api-docs\",\n    \"formats\": [\"json\"],\n    \"jsonOptions\": {\n      \"prompt\": \"Extract the header parameters for the authentication endpoint\",\n      \"schema\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"parameters\": {\n            \"type\": \"array\",\n            \"items\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"name\": { \"type\": \"string\" },\n                \"type\": { \"type\": \"string\" },\n                \"required\": { \"type\": \"boolean\" },\n                \"description\": { \"type\": \"string\" }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n```\n\n**Prefer markdown format by default.** You can read and reason over the full page content directly — no need for an intermediate query step. Use markdown for questions about page content, factual lookups, and any task where you need to understand the page.\n\n**Use JSON format when user needs:**\n- Structured data with specific fields (extract all products with name, price, description)\n- Data in a specific schema for downstream processing\n\n**Use query format only when:**\n- The page is extremely long and you need a single targeted answer without processing the full content\n- You want a quick factual answer and don't need to retain the page content\n- Set `queryOptions.mode` to `\"directQuote\"` when you need verbatim page text; otherwise it defaults to `\"freeform\"`\n\n**Usage Example (markdown format - default for most tasks):**\n```json\n{\n  \"name\": \"firecrawl_scrape\",\n  \"arguments\": {\n    \"url\": \"https://example.com/article\",\n    \"formats\": [\"markdown\"],\n    \"onlyMainContent\": true\n  }\n}\n```\n**Usage Example (branding format - extract brand identity):**\n```json\n{\n  \"name\": \"firecrawl_scrape\",\n  \"arguments\": {\n    \"url\": \"https://example.com\",\n    \"formats\": [\"branding\"]\n  }\n}\n```\n**Branding format:** Extracts comprehensive brand identity (colors, fonts, typography, spacing, logo, UI components) for design analysis or style replication.\n**Performance:** Add maxAge parameter for 500% faster scrapes using cached data.\n**Lockdown mode:** Set `lockdown: true` to serve the request only from the existing index/cache without any outbound network request. For air-gapped or compliance-constrained use where the request URL itself is considered sensitive. Errors on cache miss. Billed at 5 credits.\n**Privacy:** Set `redactPII: true` to return content with personally identifiable information redacted.\n**Returns:** JSON structured data, markdown, branding profile, or other formats as specified.\n**Safe Mode:** Read-only content extraction. Interactive actions (click, write, executeJavascript) are disabled for security.\n",
+        "description": "\nScrape content from a single URL with advanced options.\nThis is the most powerful, fastest and most reliable scraper tool, if available you should always default to using this tool for any web scraping needs.\n\n**Best for:** Single page content extraction, when you know exactly which page contains the information.\n**Not recommended for:** Multiple pages (call scrape multiple times or use crawl), unknown page location (use search).\n**Common mistakes:** Using markdown format when extracting specific data points (use JSON instead).\n**Other Features:** Use 'branding' format to extract brand identity (colors, fonts, typography, spacing, UI components) for design analysis or style replication.\n\n**CRITICAL - Format Selection (you MUST follow this):**\nWhen the user asks for SPECIFIC data points, you MUST use JSON format with a schema. Only use markdown when the user needs the ENTIRE page content.\n\n**Use JSON format when user asks for:**\n- Parameters, fields, or specifications (e.g., \"get the header parameters\", \"what are the required fields\")\n- Prices, numbers, or structured data (e.g., \"extract the pricing\", \"get the product details\")\n- API details, endpoints, or technical specs (e.g., \"find the authentication endpoint\")\n- Lists of items or properties (e.g., \"list the features\", \"get all the options\")\n- Any specific piece of information from a page\n\n**Use markdown format ONLY when:**\n- User wants to read/summarize an entire article or blog post\n- User needs to see all content on a page without specific extraction\n- User explicitly asks for the full page content\n\n**Handling JavaScript-rendered pages (SPAs):**\nIf JSON extraction returns empty, minimal, or just navigation content, the page is likely JavaScript-rendered or the content is on a different URL. Try these steps IN ORDER:\n1. **Add waitFor parameter:** Set `waitFor: 5000` to `waitFor: 10000` to allow JavaScript to render before extraction\n2. **Try a different URL:** If the URL has a hash fragment (#section), try the base URL or look for a direct page URL\n3. **Use firecrawl_map to find the correct page:** Large documentation sites or SPAs often spread content across multiple URLs. Use `firecrawl_map` with a `search` parameter to discover the specific page containing your target content, then scrape that URL directly.\n   Example: If scraping \"https://docs.example.com/reference\" fails to find webhook parameters, use `firecrawl_map` with `{\"url\": \"https://docs.example.com/reference\", \"search\": \"webhook\"}` to find URLs like \"/reference/webhook-events\", then scrape that specific page.\n4. **Use firecrawl_agent:** As a last resort for heavily dynamic pages where map+scrape still fails, use the agent which can autonomously navigate and research\n\n**Usage Example (JSON format - REQUIRED for specific data extraction):**\n```json\n{\n  \"name\": \"firecrawl_scrape\",\n  \"arguments\": {\n    \"url\": \"https://example.com/api-docs\",\n    \"formats\": [\"json\"],\n    \"jsonOptions\": {\n      \"prompt\": \"Extract the header parameters for the authentication endpoint\",\n      \"schema\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"parameters\": {\n            \"type\": \"array\",\n            \"items\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"name\": { \"type\": \"string\" },\n                \"type\": { \"type\": \"string\" },\n                \"required\": { \"type\": \"boolean\" },\n                \"description\": { \"type\": \"string\" }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n```\n\n**Prefer markdown format by default.** You can read and reason over the full page content directly \u2014 no need for an intermediate query step. Use markdown for questions about page content, factual lookups, and any task where you need to understand the page.\n\n**Use JSON format when user needs:**\n- Structured data with specific fields (extract all products with name, price, description)\n- Data in a specific schema for downstream processing\n\n**Use query format only when:**\n- The page is extremely long and you need a single targeted answer without processing the full content\n- You want a quick factual answer and don't need to retain the page content\n- Set `queryOptions.mode` to `\"directQuote\"` when you need verbatim page text; otherwise it defaults to `\"freeform\"`\n\n**Usage Example (markdown format - default for most tasks):**\n```json\n{\n  \"name\": \"firecrawl_scrape\",\n  \"arguments\": {\n    \"url\": \"https://example.com/article\",\n    \"formats\": [\"markdown\"],\n    \"onlyMainContent\": true\n  }\n}\n```\n**Usage Example (branding format - extract brand identity):**\n```json\n{\n  \"name\": \"firecrawl_scrape\",\n  \"arguments\": {\n    \"url\": \"https://example.com\",\n    \"formats\": [\"branding\"]\n  }\n}\n```\n**Branding format:** Extracts comprehensive brand identity (colors, fonts, typography, spacing, logo, UI components) for design analysis or style replication.\n**Performance:** Add maxAge parameter for 500% faster scrapes using cached data.\n**Lockdown mode:** Set `lockdown: true` to serve the request only from the existing index/cache without any outbound network request. For air-gapped or compliance-constrained use where the request URL itself is considered sensitive. Errors on cache miss. Billed at 5 credits.\n**Privacy:** Set `redactPII: true` to return content with personally identifiable information redacted.\n**Returns:** JSON structured data, markdown, branding profile, or other formats as specified.\n**Safe Mode:** Read-only content extraction. Interactive actions (click, write, executeJavascript) are disabled for security.\n",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -2087,7 +1886,7 @@ export const STATIC_TOOL_REGISTRY: Record<string, StaticProviderToolRegistryEntr
       },
       {
         "name": "firecrawl_search_feedback",
-        "description": "\nSend structured feedback on a previous `firecrawl_search` result. **Call this immediately after a search where you used the results** so we can improve search quality and refund 1 credit (search costs 2).\n\nPass the `searchId` returned by `firecrawl_search` (the `id` field on the response) and tell us:\n\n- **rating** — overall result quality: `good`, `partial`, or `bad`.\n- **valuableSources** — which result URLs were actually useful, and a short reason why.\n- **missingContent** — **the most important field.** An ARRAY of specific pieces of content you expected to find but didn't. One entry per missing piece, each with a short `topic` and an optional longer `description`. Examples: `{\"topic\":\"enterprise pricing\",\"description\":\"no pricing tier table for the Enterprise plan was returned\"}`, `{\"topic\":\"API rate limits\"}`, `{\"topic\":\"comparison vs competitors\"}`. **Be specific** — these aggregate across teams and tell us what to index next. Do not pack multiple topics into one entry.\n- **querySuggestions** — how the query or response shape could be improved (e.g. \"would have liked official docs first\", \"should boost github.com\").\n\n**Substantive-feedback requirement** (zero-effort feedback is rejected with HTTP 400):\n- `good` — must include at least one `valuableSources` entry\n- `partial` — must include `valuableSources` or at least one `missingContent` entry\n- `bad` — must include at least one `missingContent` entry or `querySuggestions`\n\n**Time window:** Feedback must be submitted within ~2 minutes of the search. Beyond that, the call returns HTTP 409 with `feedbackErrorCode: \"FEEDBACK_WINDOW_EXPIRED\"` — do not retry, just move on. Same goes for any 4xx response: do not retry-loop.\n\n**Behaviors:**\n- Idempotent per `searchId`. Re-submitting for the same id returns `alreadySubmitted: true` with `creditsRefunded: 0`.\n- Refund only applies to billable searches; preview teams are blocked.\n- Failed searches cannot receive feedback (the search itself already returned an error you can act on).\n- **Daily refund cap (per team, per UTC day, default 100 credits).** Once a team's `creditsRefundedToday` reaches `dailyRefundCap`, the response returns `dailyCapReached: true` with `creditsRefunded: 0`. The feedback is still recorded for search-quality improvement — only the credit refund is gated. **Stop calling this tool for the rest of the UTC day** when you see `dailyCapReached: true`.\n\n**When to call:** Right after processing a search result. If the result didn't help, send rating `bad` with a clear `missingContent` — that is just as valuable as a `good` rating.\n\n**Usage Example (good rating with valuable sources + missing content):**\n```json\n{\n  \"name\": \"firecrawl_search_feedback\",\n  \"arguments\": {\n    \"searchId\": \"0193f6c5-1234-7890-abcd-1234567890ab\",\n    \"rating\": \"good\",\n    \"valuableSources\": [\n      { \"url\": \"https://docs.firecrawl.dev/features/search\", \"reason\": \"Most up-to-date description of /search.\" }\n    ],\n    \"missingContent\": [\n      { \"topic\": \"Pricing for the search endpoint\", \"description\": \"No pricing tier table for /search specifically.\" },\n      { \"topic\": \"Rate limits\", \"description\": \"Per-team RPS for /search not documented.\" }\n    ],\n    \"querySuggestions\": \"Boost docs.firecrawl.dev for queries that mention 'firecrawl'\"\n  }\n}\n```\n\n**Usage Example (bad rating, what was missing):**\n```json\n{\n  \"name\": \"firecrawl_search_feedback\",\n  \"arguments\": {\n    \"searchId\": \"0193f6c5-1234-7890-abcd-1234567890ab\",\n    \"rating\": \"bad\",\n    \"missingContent\": [\n      { \"topic\": \"Recent benchmarks\", \"description\": \"All results were >12 months old.\" },\n      { \"topic\": \"Comparison vs Algolia\" }\n    ]\n  }\n}\n```\n\n**Returns:** `{ success, feedbackId, creditsRefunded, creditsRefundedToday, dailyRefundCap, dailyCapReached?, alreadySubmitted?, warning? }` JSON.\n",
+        "description": "\nSend structured feedback on a previous `firecrawl_search` result. **Call this immediately after a search where you used the results** so we can improve search quality and refund 1 credit (search costs 2).\n\nPass the `searchId` returned by `firecrawl_search` (the `id` field on the response) and tell us:\n\n- **rating** \u2014 overall result quality: `good`, `partial`, or `bad`.\n- **valuableSources** \u2014 which result URLs were actually useful, and a short reason why.\n- **missingContent** \u2014 **the most important field.** An ARRAY of specific pieces of content you expected to find but didn't. One entry per missing piece, each with a short `topic` and an optional longer `description`. Examples: `{\"topic\":\"enterprise pricing\",\"description\":\"no pricing tier table for the Enterprise plan was returned\"}`, `{\"topic\":\"API rate limits\"}`, `{\"topic\":\"comparison vs competitors\"}`. **Be specific** \u2014 these aggregate across teams and tell us what to index next. Do not pack multiple topics into one entry.\n- **querySuggestions** \u2014 how the query or response shape could be improved (e.g. \"would have liked official docs first\", \"should boost github.com\").\n\n**Substantive-feedback requirement** (zero-effort feedback is rejected with HTTP 400):\n- `good` \u2014 must include at least one `valuableSources` entry\n- `partial` \u2014 must include `valuableSources` or at least one `missingContent` entry\n- `bad` \u2014 must include at least one `missingContent` entry or `querySuggestions`\n\n**Time window:** Feedback must be submitted within ~2 minutes of the search. Beyond that, the call returns HTTP 409 with `feedbackErrorCode: \"FEEDBACK_WINDOW_EXPIRED\"` \u2014 do not retry, just move on. Same goes for any 4xx response: do not retry-loop.\n\n**Behaviors:**\n- Idempotent per `searchId`. Re-submitting for the same id returns `alreadySubmitted: true` with `creditsRefunded: 0`.\n- Refund only applies to billable searches; preview teams are blocked.\n- Failed searches cannot receive feedback (the search itself already returned an error you can act on).\n- **Daily refund cap (per team, per UTC day, default 100 credits).** Once a team's `creditsRefundedToday` reaches `dailyRefundCap`, the response returns `dailyCapReached: true` with `creditsRefunded: 0`. The feedback is still recorded for search-quality improvement \u2014 only the credit refund is gated. **Stop calling this tool for the rest of the UTC day** when you see `dailyCapReached: true`.\n\n**When to call:** Right after processing a search result. If the result didn't help, send rating `bad` with a clear `missingContent` \u2014 that is just as valuable as a `good` rating.\n\n**Usage Example (good rating with valuable sources + missing content):**\n```json\n{\n  \"name\": \"firecrawl_search_feedback\",\n  \"arguments\": {\n    \"searchId\": \"0193f6c5-1234-7890-abcd-1234567890ab\",\n    \"rating\": \"good\",\n    \"valuableSources\": [\n      { \"url\": \"https://docs.firecrawl.dev/features/search\", \"reason\": \"Most up-to-date description of /search.\" }\n    ],\n    \"missingContent\": [\n      { \"topic\": \"Pricing for the search endpoint\", \"description\": \"No pricing tier table for /search specifically.\" },\n      { \"topic\": \"Rate limits\", \"description\": \"Per-team RPS for /search not documented.\" }\n    ],\n    \"querySuggestions\": \"Boost docs.firecrawl.dev for queries that mention 'firecrawl'\"\n  }\n}\n```\n\n**Usage Example (bad rating, what was missing):**\n```json\n{\n  \"name\": \"firecrawl_search_feedback\",\n  \"arguments\": {\n    \"searchId\": \"0193f6c5-1234-7890-abcd-1234567890ab\",\n    \"rating\": \"bad\",\n    \"missingContent\": [\n      { \"topic\": \"Recent benchmarks\", \"description\": \"All results were >12 months old.\" },\n      { \"topic\": \"Comparison vs Algolia\" }\n    ]\n  }\n}\n```\n\n**Returns:** `{ success, feedbackId, creditsRefunded, creditsRefundedToday, dailyRefundCap, dailyCapReached?, alreadySubmitted?, warning? }` JSON.\n",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -2322,7 +2121,7 @@ export const STATIC_TOOL_REGISTRY: Record<string, StaticProviderToolRegistryEntr
       },
       {
         "name": "batch_scrape_urls",
-        "description": "Scrape a SPECIFIC, KNOWN list of URLs (typically from different domains). **Do NOT use this for crawling a website** - if the user wants to scrape a whole site or 'crawl' a domain, use `create_crawl` instead. Use this only when you already have an explicit list of URLs to scrape (e.g., user provides a CSV of URLs, or you need to scrape unrelated pages). Returns a batch_id immediately. Use `get_batch_results` with the batch_id to fetch the scraped content once the batch completes (~5–8 min). Set `wait_for_completion_seconds` to poll automatically.",
+        "description": "Scrape a SPECIFIC, KNOWN list of URLs (typically from different domains). **Do NOT use this for crawling a website** - if the user wants to scrape a whole site or 'crawl' a domain, use `create_crawl` instead. Use this only when you already have an explicit list of URLs to scrape (e.g., user provides a CSV of URLs, or you need to scrape unrelated pages). Returns a batch_id immediately. Use `get_batch_results` with the batch_id to fetch the scraped content once the batch completes (~5\u20138 min). Set `wait_for_completion_seconds` to poll automatically.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -2354,7 +2153,7 @@ export const STATIC_TOOL_REGISTRY: Record<string, StaticProviderToolRegistryEntr
               },
               "minItems": 1,
               "maxItems": 10000,
-              "description": "Array of URLs to scrape — plain URL strings, or objects with \"url\" and optional \"custom_id\"."
+              "description": "Array of URLs to scrape \u2014 plain URL strings, or objects with \"url\" and optional \"custom_id\"."
             },
             "urls_to_scrape": {
               "type": "array",
@@ -2409,7 +2208,7 @@ export const STATIC_TOOL_REGISTRY: Record<string, StaticProviderToolRegistryEntr
               "minimum": 0,
               "maximum": 900,
               "default": 0,
-              "description": "Seconds to wait for batch completion. If >0, polls every 10s until done or timeout, then returns status. Use 0 to return immediately with batch_id (then call get_batch_results later). Recommended: 60 for batches <50 URLs, 300–600 for 50–1k URLs, 0 for larger batches (poll separately)."
+              "description": "Seconds to wait for batch completion. If >0, polls every 10s until done or timeout, then returns status. Use 0 to return immediately with batch_id (then call get_batch_results later). Recommended: 60 for batches <50 URLs, 300\u2013600 for 50\u20131k URLs, 0 for larger batches (poll separately)."
             }
           },
           "additionalProperties": false,
@@ -2475,7 +2274,7 @@ export const STATIC_TOOL_REGISTRY: Record<string, StaticProviderToolRegistryEntr
       },
       {
         "name": "create_map",
-        "description": "Get a LIST of URLs on a website (URL discovery only — does NOT scrape content). Use when the user wants a list of links: 'show me all URLs on this site', 'map this website', or when you want to surface candidate URLs to the user before scraping a subset. Prefer `create_crawl` if the goal is to scrape the whole site — it discovers AND scrapes in one workflow. Use this only when the URL list itself is the deliverable.",
+        "description": "Get a LIST of URLs on a website (URL discovery only \u2014 does NOT scrape content). Use when the user wants a list of links: 'show me all URLs on this site', 'map this website', or when you want to surface candidate URLs to the user before scraping a subset. Prefer `create_crawl` if the goal is to scrape the whole site \u2014 it discovers AND scrapes in one workflow. Use this only when the URL list itself is the deliverable.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -2567,7 +2366,7 @@ export const STATIC_TOOL_REGISTRY: Record<string, StaticProviderToolRegistryEntr
       },
       {
         "name": "get_crawl_results",
-        "description": "Retrieve the status and scraped pages for a crawl job. Pass the crawl_id returned by create_crawl. If the crawl is still in_progress, returns the current status so you can call again later (poll every ~10 seconds). Once completed, returns the list of discovered pages with their scraped content in the requested formats. This is the REQUIRED companion to create_crawl — create_crawl only kicks off the async job, this tool is how you actually get the content.",
+        "description": "Retrieve the status and scraped pages for a crawl job. Pass the crawl_id returned by create_crawl. If the crawl is still in_progress, returns the current status so you can call again later (poll every ~10 seconds). Once completed, returns the list of discovered pages with their scraped content in the requested formats. This is the REQUIRED companion to create_crawl \u2014 create_crawl only kicks off the async job, this tool is how you actually get the content.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -2811,7 +2610,7 @@ export const STATIC_TOOL_REGISTRY: Record<string, StaticProviderToolRegistryEntr
             },
             "full_content": {
               "default": false,
-              "description": "Prefer leaving this off. The default\nexcerpt mode returns LLM-optimized snippets focused on your objective — they\nare much smaller, cheaper, and usually all you need. Only set to true when\nyou explicitly need the entire page as markdown (e.g. reading a long article\nin full, or running a document through a downstream summarizer).\n\nWarning: enabling full content can return a large amount of content —\noften tens of thousands of tokens for a long article. This may exceed your\nMCP client's tool-output limit and will substantially increase response\nsize and latency.",
+              "description": "Prefer leaving this off. The default\nexcerpt mode returns LLM-optimized snippets focused on your objective \u2014 they\nare much smaller, cheaper, and usually all you need. Only set to true when\nyou explicitly need the entire page as markdown (e.g. reading a long article\nin full, or running a document through a downstream summarizer).\n\nWarning: enabling full content can return a large amount of content \u2014\noften tens of thousands of tokens for a long article. This may exceed your\nMCP client's tool-output limit and will substantially increase response\nsize and latency.",
               "title": "Full Content",
               "type": "boolean"
             },
