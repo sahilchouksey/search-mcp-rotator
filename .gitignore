@@ -7,3 +7,5 @@ config.json
 .DS_Store
 temp/
 .serena/
+# Local-only regression probe (not shipped to remote)
+scripts/test-init-timeout.mjs

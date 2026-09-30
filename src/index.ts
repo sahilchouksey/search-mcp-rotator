@@ -64,8 +64,14 @@ async function main(): Promise<void> {
       const keyPool = new KeyPool(providerConfig)
       const detector = new ExhaustionDetector(providerName, providerConfig.exhaustionPatterns)
       const authInjector = new AuthInjector(providerConfig)
-      const proxy = new MCPProxy(providerName, providerConfig, keyPool, detector, authInjector)
+      const proxy = new MCPProxy(providerName, providerConfig, keyPool, detector, authInjector, {
+        discoveryTimeoutMs: config.discoveryTimeoutMs,
+        toolCacheTtlMs: config.toolCacheTtlMs,
+      })
       await proxy.start()
+      if (process.env.MCP_ROTATOR_WARMUP === '1') {
+        void proxy.warmup()
+      }
       const cleanup = () => { keyPool.stop(); process.exit(0) }
       process.on('SIGINT', cleanup)
       process.on('SIGTERM', cleanup)
@@ -73,8 +79,16 @@ async function main(): Promise<void> {
     }
 
     // ── Multi-provider mode (default) ──────────────────────────────────────
-    const proxy = new MultiProxy(config.providers)
+    const proxy = new MultiProxy(config.providers, {
+      discoveryTimeoutMs: config.discoveryTimeoutMs,
+      toolCacheTtlMs: config.toolCacheTtlMs,
+    })
     await proxy.start()
+    // Opt-in background warmup: live-discover registry-miss providers without
+    // blocking startup. Fire-and-forget; errors are logged, never thrown.
+    if (process.env.MCP_ROTATOR_WARMUP === '1') {
+      void proxy.warmup()
+    }
     process.on('SIGINT',  () => process.exit(0))
     process.on('SIGTERM', () => process.exit(0))
 
